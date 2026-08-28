@@ -1,0 +1,12 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: pixelforge-frontend
+
+    ports:
+      - "80:80"
+
+    restart: unless-stopped
