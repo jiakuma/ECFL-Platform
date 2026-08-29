@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import * as echarts from 'echarts'
-import { ArrowLeft, Lock, Download, WarningFilled, InfoFilled, Connection } from '@element-plus/icons-vue'
-import EChart from '@/components/EChart.vue'
+import { ArrowLeft, Lock, Download, WarningFilled, Connection, Document } from '@element-plus/icons-vue'
+import ctImage from '@/assets/patients/P-0001/exams/ct.jpg'
+import endoscopyImage from '@/assets/patients/P-0001/exams/endoscopy.jpg'
+import petCtImage from '@/assets/patients/P-0001/exams/pet-ct.jpg'
+import molecularReportUrl from '@/assets/patients/P-0001/molecular/escc-molecular-case-report.pdf?url'
+import pathologyImage from '@/assets/patients/P-0001/pathology/escc-he-high-mag.jpg'
 import {
   resolvePatientDetail,
   maskIdNo,
@@ -20,7 +23,6 @@ const router = useRouter()
 
 // ---------- 当前患者（缺失详情时由列表行合成最小可用详情） ----------
 const patient = computed(() => resolvePatientDetail(route.params.id as string))
-const isSynth = computed(() => patient.value.joinedAt === '—')
 
 // ---------- 脱敏权限状态（与临床状态分开表达） ----------
 const levelText: Record<DataLevel, string> = { full: '完全可见', masked: '脱敏可见', summary: '摘要可见' }
@@ -29,10 +31,10 @@ const levelType: Record<DataLevel, 'success' | 'warning' | 'info'> = {
 }
 // ---------- 临床状态语义色 ----------
 const statusType: Record<string, 'primary' | 'success' | 'warning' | 'info'> = {
-  随访中: 'primary', 治疗中: 'warning', 失访: 'info', 已结案: 'success',
+  随访中: 'primary', 治疗中: 'warning', 评估中: 'info', 失访: 'info', 已结案: 'success',
 }
 const statusColor: Record<string, string> = {
-  随访中: '#06b6d4', 治疗中: '#f59e0b', 失访: '#94a3b8', 已结案: '#10b981',
+  随访中: '#06b6d4', 治疗中: '#f59e0b', 评估中: '#8b5cf6', 失访: '#94a3b8', 已结案: '#10b981',
 }
 
 // ---------- 姓名门控（数据不出域：非 full 级遮蔽） ----------
@@ -57,26 +59,27 @@ function goBack() {
 
 // ---------- 功能导航（一级业务视图） ----------
 // 患者旅程已独立为左侧固定导航轴，不再作为页签；点击旅程节点会联动此处
-type NavKey = 'overview' | 'exams' | 'pathology' | 'treatment' | 'followup' | 'archive'
+type NavKey = 'overview' | 'exams' | 'diagnosis' | 'treatment' | 'followup' | 'archive'
 const navItems: { key: NavKey; label: string; color: string }[] = [
-  { key: 'overview', label: '就诊概览', color: '#0ea5e9' },
+  { key: 'overview', label: '就诊记录', color: '#0ea5e9' },
   { key: 'exams', label: '检查检验', color: '#f59e0b' },
-  { key: 'pathology', label: '病理与分子', color: '#8b5cf6' },
+  { key: 'diagnosis', label: '诊断', color: '#8b5cf6' },
   { key: 'treatment', label: '治疗记录', color: '#06b6d4' },
-  { key: 'followup', label: '随访预后', color: '#10b981' },
+  { key: 'followup', label: '疗效随访', color: '#10b981' },
   { key: 'archive', label: '完整档案', color: '#64748b' },
 ]
 const activeNav = ref<NavKey>('overview')
 // 左侧旅程轴当前选中节点（点击或联动高亮）
 const selectedNodeId = ref('')
 
-// ---------- 事件 → 页面映射（统一业务语义：两级导航一致） ----------
-// 就诊节点→就诊概览（作为结构性标记，点击定位该次就诊）；检查→检查检验；诊断分期→病理与分子；
-// 治疗决策/治疗→治疗记录；疗效评估/复查/随访/复发转移→随访预后
+// ---------- 时间轴事件 → 右侧业务页面映射 ----------
+// 左侧筛选只控制左侧时间轴内容；右侧导航只控制右侧页面。
+// 点击某一条时间轴事件时，左侧时间轴保持当前位置和筛选状态不变，
+// 仅切换右侧对应业务页面，并定位到该事件关联的具体记录。
 const kindToNav: Record<string, NavKey> = {
   就诊节点: 'overview',
   检查: 'exams',
-  诊断分期: 'pathology',
+  诊断分期: 'diagnosis',
   治疗决策: 'treatment',
   治疗: 'treatment',
   疗效评估: 'followup',
@@ -88,20 +91,16 @@ const followupKinds = ['随访', '复查', '疗效评估', '复发转移']
 
 // ---------- 患者旅程时间轴（核心，事件级） ----------
 // 二级筛选仅用于筛选时间轴，与一级导航保持同名/同色/同业务归属。
-// 「就诊」由时间轴的「就诊节点」承载，与右侧「就诊概览」同源；筛选「就诊」即只看真实门诊/急诊。
-const timelineFilters = [
-  { label: '全部', value: 'all', color: '#2563eb' },
-  { label: '就诊', value: '就诊节点', color: '#0ea5e9' },
-  { label: '检查', value: '检查', color: '#f59e0b' },
-  { label: '病理分期', value: '诊断分期', color: '#8b5cf6' },
-  { label: '治疗', value: '治疗', color: '#06b6d4' },
-  { label: '随访', value: '随访', color: '#10b981' },
-] as const
-const timelineFilter = ref('all')
+// 「就诊」由时间轴的「就诊节点」承载，与右侧「就诊概览」同源；筛选「就诊」即只看真实门诊/住院/急诊。
 const kindColor: Record<string, string> = {
   就诊节点: '#0ea5e9', 检查: '#f59e0b', 诊断分期: '#8b5cf6',
   治疗决策: '#6366f1', 治疗: '#06b6d4',
   疗效评估: '#10b981', 复查: '#10b981', 随访: '#10b981', 复发转移: '#ef4444',
+}
+const kindLabel: Record<string, string> = {
+  就诊节点: '就诊', 检查: '检查', 诊断分期: '诊断',
+  治疗决策: '治疗决策', 治疗: '治疗',
+  疗效评估: '疗效评估', 复查: '复查', 随访: '随访', 复发转移: '复发转移',
 }
 
 // 按真实日期倒序排列（系统操作不计入核心临床旅程）
@@ -110,22 +109,16 @@ const timelineAll = computed(() =>
 )
 // 二级筛选：治疗决策归入「治疗」，病理/分期覆盖诊断分期，随访覆盖疗效评估/复查/随访/复发转移
 // 「就诊」为独立筛选桶（由真实就诊生成），仅在「全部」或「就诊」时展示就诊节点
-function kindMatch(kind: string): boolean {
-  const f = timelineFilter.value
-  if (f === 'all') return true
-  if (f === '就诊节点') return kind === '就诊节点'
-  if (f === '诊断分期') return kind === '诊断分期'
-  if (f === '治疗') return kind === '治疗' || kind === '治疗决策'
-  if (f === '随访') return followupKinds.includes(kind)
-  return kind === f
+
+function switchNav(key: NavKey) {
+  activeNav.value = key
 }
-const filteredTimeline = computed(() => timelineAll.value.filter((t) => kindMatch(t.kind)))
 
 // 点击旅程事件 → 进入对应业务页面 → 左侧选中态 + 右侧按记录 id 滚动并短暂高亮
 const highlightRef = ref('')
 // 点击左侧就诊节点 → 右侧就诊概览定位并高亮对应的真实就诊卡
 const flashVisitId = ref('')
-// 就诊概览为真实门诊/急诊经历的独立视图，与左侧时间轴事件级不再做双向就诊高亮联动
+// 就诊概览为真实门诊/住院/急诊经历的独立视图，与左侧时间轴事件级不再做双向就诊高亮联动
 async function goToEvent(node: TimelineNode) {
   // 就诊节点对应一条真实就诊：点击切到就诊概览并定位/高亮该就诊卡（node.id === 就诊 id）
   if (node.kind === '就诊节点') {
@@ -146,6 +139,38 @@ async function goToEvent(node: TimelineNode) {
   activeNav.value = target
   selectedNodeId.value = node.id
   await nextTick()
+
+  if (node.kind === '治疗决策') {
+    highlightRef.value = 'treatment-decision'
+    const decisionEl = document.getElementById('rec-treatment-decision')
+    if (decisionEl) decisionEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    window.setTimeout(() => {
+      if (highlightRef.value === 'treatment-decision') highlightRef.value = ''
+    }, 2600)
+    return
+  }
+
+  if (target === 'followup' && (node.kind === '疗效评估' || node.title.includes('疗效评估'))) {
+    highlightRef.value = 'eval-' + node.id
+    const evalEl = document.getElementById('rec-eval-' + node.id)
+    if (evalEl) evalEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    window.setTimeout(() => {
+      if (highlightRef.value === 'eval-' + node.id) highlightRef.value = ''
+    }, 2600)
+    return
+  }
+
+  if (node.kind === '复发转移') {
+    const pid = node.ref ?? node.id
+    highlightRef.value = 'progression-' + pid
+    const progressionEl = document.getElementById('rec-progression-' + pid)
+    if (progressionEl) progressionEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    window.setTimeout(() => {
+      if (highlightRef.value === 'progression-' + pid) highlightRef.value = ''
+    }, 2600)
+    return
+  }
+
   const id = node.ref ?? node.id
   highlightRef.value = id
   const el = document.getElementById('rec-' + id)
@@ -170,6 +195,7 @@ const currentStageNodeId = computed(() => {
 })
 const phaseLabel: Record<string, string> = {
   随访中: '规律随访阶段',
+  评估中: '诊断与治疗方案评估阶段',
   已结案: '治疗结束 · 已结案',
   失访: '失访 · 联系中断',
 }
@@ -180,129 +206,186 @@ const currentStageText = computed(() => {
   return phaseLabel[patient.value.status] ?? patient.value.status
 })
 
-// ---------- 全局临床摘要（顶部共享，原右侧四卡升级） ----------
+// ---------- 顶部患者摘要 ----------
 const treatmentPhaseText = computed(() =>
   patient.value.status === '治疗中' && currentTreatment.value
     ? `${currentTreatment.value.line} · ${currentTreatment.value.modality}`
     : phaseLabel[patient.value.status] ?? patient.value.status,
 )
+
+const treatmentDecision = computed(() =>
+  timelineAll.value.find((n) => n.kind === '治疗决策') ?? null,
+)
+
+const treatmentClinicalDiagnosis = computed(() =>
+  patient.value.diagnoses.find((d) => d.type === '分期诊断' && !d.basis.includes('术后病理')) ??
+  patient.value.diagnoses.find((d) => d.type === '临床诊断') ??
+  null,
+)
+
+const treatmentPath = computed(() =>
+  patient.value.treatments.map((t) => {
+    const timelineNode = patient.value.timeline.find(
+      (n) => n.kind === '治疗' && (n.ref === t.id || n.title.includes(t.name.slice(0, 6)) || n.date === t.startDate),
+    )
+    const isResection = t.modality === '手术' || t.modality === '内镜治疗'
+    const resectionResult =
+      isResection
+        ? timelineNode?.desc.includes('R0')
+          ? 'R0切除'
+          : '已完成'
+        : t.efficacy !== '—'
+          ? t.efficacy
+          : t.status
+
+    return {
+      ...t,
+      displayResult: resectionResult,
+      timelineDesc: timelineNode?.desc ?? '',
+    }
+  }),
+)
+
+const postoperativePathology = computed(() =>
+  patient.value.diagnoses.find((d) => d.basis.includes('术后病理') || d.basis.includes('ESD')) ?? null,
+)
 const recentConclusion = computed(() =>
   patient.value.followUps[0]?.summary ?? patient.value.timeline[0]?.desc ?? '—',
 )
 const nextFollowUp = computed(() => patient.value.followUps[0]?.nextDate ?? '—')
-const molecularCount = computed(() => patient.value.resources.filter((r) => r.type === '基因检测').length)
-const keyDiagnosis = computed(() => patient.value.diagnoses[patient.value.diagnoses.length - 1] ?? null)
+const pathologyDiagnoses = computed(() =>
+  patient.value.diagnoses.filter((d) => d.type === '病理诊断' || d.basis.includes('病理')),
+)
+const clinicalDiagnoses = computed(() =>
+  patient.value.diagnoses.filter(
+    (d) => d.type === '临床诊断' || (d.type === '分期诊断' && !d.basis.includes('术后病理')),
+  ),
+)
+const pathologyResources = computed(() =>
+  patient.value.resources.filter((r) => r.type === '病理切片' || r.type === '基因检测'),
+)
+function pathologySpecimen(d: { basis: string }) {
+  if (d.basis.includes('ESD')) return 'ESD切除标本'
+  return d.basis.includes('术后病理') ? '食管切除标本' : '胃镜活检组织'
+}
+function pathologyNote(d: { date: string }) {
+  return patient.value.timeline.find((n) => n.date === d.date && n.title.includes('病理'))?.desc ?? ''
+}
+const molecularRecords = computed(() => {
+  const tests = patient.value.molecularTests
+  const pdL1 = tests.find((m) => m.item === 'PD-L1')
+  const mmr = tests.find((m) => m.item === 'MMR')
+  const msi = tests.find((m) => m.item === 'MSI')
+  const ngs = tests.find((m) => m.item === 'NGS')
 
-const summaryTreatment = computed(() =>
-  currentTreatment.value ? `${currentTreatment.value.name}（${currentTreatment.value.line}）` : '暂无进行中治疗',
-)
-const summaryExam = computed(() =>
-  activeLab.value && latestLab.value ? `${latestLab.value.value} ${activeLab.value.unit} · ${activeLab.value.name}` : '暂无检验指标',
-)
-const summaryMolecular = computed(() =>
-  keyDiagnosis.value
-    ? `${keyDiagnosis.value.histology} · ${keyDiagnosis.value.t}${keyDiagnosis.value.n}${keyDiagnosis.value.m} · ${keyDiagnosis.value.stage}`
-    : '—',
-)
-const summaryFollowup = computed(() =>
-  `${patient.value.status} · 下次 ${nextFollowUp.value} · 累计 ${patient.value.followUps.length} 次`,
-)
-
-// ---------- 检验指标趋势 ----------
-const activeLabKey = ref('cea')
-const activeLab = computed<LabSeries | undefined>(() =>
-  patient.value.labs.find((l) => l.key === activeLabKey.value),
-)
-const labOption = computed(() => {
-  const lab = activeLab.value
-  if (!lab) return {}
-  const gradient = new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-    { offset: 0, color: 'rgba(37,99,235,0.18)' },
-    { offset: 1, color: 'rgba(37,99,235,0.01)' },
-  ])
-  return {
-    tooltip: { trigger: 'axis' },
-    grid: { left: 52, right: 28, top: 30, bottom: 40 },
-    xAxis: { type: 'category', boundaryGap: false, data: lab.points.map((p) => p.date) },
-    yAxis: { type: 'value', scale: true },
-    series: [
-      {
-        type: 'line',
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 7,
-        data: lab.points.map((p) => p.value),
-        lineStyle: { width: 3, color: '#2563eb' },
-        itemStyle: { color: '#2563eb' },
-        areaStyle: { color: gradient },
-        markLine: {
-          symbol: 'none',
-          data: [
-            {
-              yAxis: lab.refUpper,
-              lineStyle: { color: '#f59e0b', type: 'dashed' },
-              label: { formatter: `参考上限 ${lab.refUpper}${lab.unit}`, color: '#f59e0b', fontSize: 11 },
-            },
-          ],
-        },
-      },
-    ],
-  }
+  return [
+    pdL1 && {
+      id: 'MR-PDL1',
+      title: 'PD-L1 免疫组化',
+      sub: '免疫治疗相关标志物',
+      result: pdL1.result,
+      note: pdL1.note,
+      date: pdL1.date,
+      org: pdL1.org,
+    },
+    (mmr || msi) && {
+      id: 'MR-MMR-MSI',
+      title: mmr && msi ? 'MMR / MSI 检测' : mmr ? 'MMR 检测' : 'MSI 检测',
+      sub: mmr && msi ? '错配修复 / 微卫星状态' : mmr ? '错配修复状态' : '微卫星状态',
+      result: [mmr?.result, msi?.result].filter(Boolean).join(' · '),
+      note: [mmr?.note, msi?.note].filter(Boolean).join('；'),
+      date: mmr?.date ?? msi?.date ?? '',
+      org: mmr?.org ?? msi?.org ?? '',
+    },
+    ngs && {
+      id: 'MR-NGS',
+      title: 'NGS 基因检测',
+      sub: '食管癌相关基因 Panel',
+      result: ngs.result,
+      note: ngs.note,
+      date: ngs.date,
+      org: ngs.org,
+    },
+  ].filter(Boolean) as {
+    id: string
+    title: string
+    result: string
+    note: string
+    sub: string
+    date: string
+    org: string
+  }[]
 })
-watch(
-  () => route.params.id,
-  () => {
-    activeLabKey.value = patient.value.labs[0]?.key ?? ''
-  },
-  { immediate: true },
+
+// ---------- 检查检验 ----------
+
+// 检验指标分类（用于「近期检验」分类标签）
+const labCategories = ['全部', '血清肿瘤标志物', '血常规', '肝肾功能', '营养指标', '凝血功能', '其他'] as const
+const labCategoryMap: Record<string, string> = {
+  cea: '血清肿瘤标志物', scc: '血清肿瘤标志物',
+  hgb: '血常规', wbc: '血常规',
+  alt: '肝肾功能',
+  alb: '营养指标',
+  pt: '凝血功能',
+}
+const labCat = ref('全部')
+const filteredLabs = computed(() =>
+  patient.value.labs.filter((l) => labCat.value === '全部' || labCategoryMap[l.key] === labCat.value),
 )
-const latestLab = computed(() =>
-  activeLab.value ? activeLab.value.points[activeLab.value.points.length - 1] : null,
-)
-function labLatest(lab: LabSeries) {
+function labLatestPoint(lab: LabSeries) {
   return lab.points[lab.points.length - 1]
 }
-function labAbnormal(lab: LabSeries) {
-  const v = labLatest(lab).value
-  return v > lab.refUpper || v < lab.refLower
+// 最新状态：相对参考范围 → 正常 / 升高 / 降低
+function labStatus(lab: LabSeries) {
+  const v = labLatestPoint(lab).value
+  if (v > lab.refUpper) return { text: '升高', tone: '#f43f5e' }
+  if (v < lab.refLower) return { text: '降低', tone: '#f97316' }
+  return { text: '正常', tone: '#10b981' }
 }
-const labStatus = computed(() => {
-  const lab = activeLab.value
-  if (!lab || !latestLab.value) return { text: '', tone: '' }
-  if (latestLab.value.value > lab.refUpper) return { text: '超出参考范围', tone: '#f43f5e' }
-  return { text: '参考范围内', tone: '#10b981' }
-})
-function makeSpark(lab: LabSeries) {
-  return {
-    grid: { left: 2, right: 2, top: 8, bottom: 2 },
-    xAxis: { type: 'category', show: false, data: lab.points.map((p) => p.date) },
-    yAxis: { type: 'value', show: false, scale: true },
-    series: [
-      {
-        type: 'line',
-        smooth: true,
-        symbol: 'none',
-        data: lab.points.map((p) => p.value),
-        lineStyle: { width: 2, color: labAbnormal(lab) ? '#f43f5e' : '#2563eb' },
-        areaStyle: { color: labAbnormal(lab) ? 'rgba(244,63,94,0.10)' : 'rgba(37,99,235,0.10)' },
-      },
-    ],
-  }
+// 较前次变化：最新值与上一次的差值方向
+function labDelta(lab: LabSeries) {
+  const pts = lab.points
+  if (pts.length < 2) return { text: '—', tone: 'var(--pf-text-faint)' }
+  const cur = pts[pts.length - 1].value
+  const prev = pts[pts.length - 2].value
+  const diff = +(cur - prev).toFixed(2)
+  if (diff === 0) return { text: '持平', tone: 'var(--pf-text-soft)' }
+  if (diff > 0) return { text: `+${diff} ↑`, tone: '#f43f5e' }
+  return { text: `${diff} ↓`, tone: '#f97316' }
 }
-// 异常变化：所有指标中超界的历史点
-const abnormalPoints = computed(() => {
-  const out: { lab: string; date: string; value: number; unit: string; ref: string }[] = []
-  for (const lab of patient.value.labs) {
-    for (const p of lab.points) {
-      if (p.value > lab.refUpper || p.value < lab.refLower) {
-        out.push({ lab: lab.name, date: p.date, value: p.value, unit: lab.unit, ref: `${lab.refLower}~${lab.refUpper}` })
-      }
-    }
-  }
-  return out
-})
-// 最近检查：时间轴中"检查"类事件（取最新 3 条）
-const recentExams = computed(() => patient.value.timeline.filter((t) => t.kind === '检查').slice(0, 3))
+
+// ---------- 近期检查（检查事件 → 检查记录卡） ----------
+const examTypes = ['全部', '内镜', 'CT', 'MRI', 'PET-CT', '超声', '其他'] as const
+const examType = ref('全部')
+function examTypeOf(node: TimelineNode): string {
+  const t = node.title
+  if (t.includes('EUS') || t.includes('超声内镜') || t.includes('内镜') || t.includes('胃镜')) return '内镜'
+  if (t.includes('PET')) return 'PET-CT'
+  if (t.includes('MRI') || t.includes('核磁')) return 'MRI'
+  if (t.includes('CT')) return 'CT'
+  if (t.includes('超声') || t.includes('彩超')) return '超声'
+  return '其他'
+}
+const examTypeColor: Record<string, string> = {
+  内镜: '#2563eb', CT: '#06b6d4', MRI: '#0ea5e9', 'PET-CT': '#8b5cf6', 超声: '#10b981', 其他: '#94a3b8',
+}
+const examList = computed(() =>
+  patient.value.timeline
+    .filter((t) => t.kind === '检查')
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .map((t) => ({
+      id: t.id,
+      date: t.date,
+      title: t.title,
+      type: examTypeOf(t),
+      org: t.org,
+      desc: t.desc,
+      compared: t.compared ?? '',
+    })),
+)
+const filteredExams = computed(() =>
+  examList.value.filter((e) => examType.value === '全部' || e.type === examType.value),
+)
 
 // ---------- 就诊概览（就诊级聚合，与左侧事件级时间轴职责区分） ----------
 // 按真实日期倒序展示，最新就诊在前
@@ -310,18 +393,77 @@ const visits = computed(() =>
   [...patient.value.visits].sort((a, b) => b.date.localeCompare(a.date)),
 )
 const visitTypeColor: Record<string, string> = {
-  门诊: '#0ea5e9', 急诊: '#ef4444',
+  门诊: '#0ea5e9',
+  住院: '#8b5cf6',
+  急诊: '#ef4444',
 }
 
 // ---------- 资源图标 ----------
 const resourceIcon: Record<string, string> = {
-  内镜: 'Camera', CT: 'View', MRI: 'View', 病理切片: 'Notebook', 基因检测: 'DataLine',
+  内镜: 'Camera', CT: 'View', MRI: 'View', 'PET-CT': 'View', 超声: 'View', 病理切片: 'Notebook', 基因检测: 'DataLine',
 }
 const resIconColor: Record<string, string> = {
-  内镜: '#2563eb', CT: '#06b6d4', MRI: '#06b6d4', 病理切片: '#f59e0b', 基因检测: '#8b5cf6',
+  内镜: '#2563eb', CT: '#06b6d4', MRI: '#06b6d4', 'PET-CT': '#8b5cf6', 超声: '#10b981', 病理切片: '#f59e0b', 基因检测: '#8b5cf6',
 }
-function openResource() {
-  ElMessage.info('原型演示：多模态资源预览位于「完整档案 / 多模态资源」模块')
+type ExamRecord = {
+  id: string
+  date: string
+  title: string
+  type: string
+  org: string
+  desc: string
+  compared: string
+}
+
+const examReportVisible = ref(false)
+const selectedExam = ref<ExamRecord | null>(null)
+const pathologyViewerVisible = ref(false)
+const selectedPathologyResource = ref<{
+  title: string
+  date: string
+  size: string
+  format: string
+} | null>(null)
+
+function examImageOf(exam: ExamRecord | null): string {
+  if (!exam || patient.value.id !== 'P-0001') return ''
+  if (exam.type === 'PET-CT') return petCtImage
+  if (exam.type === 'CT') return ctImage
+  if (exam.type === '内镜') return endoscopyImage
+  return ''
+}
+
+const selectedExamImage = computed(() => examImageOf(selectedExam.value))
+
+function openExamReport(exam: ExamRecord) {
+  selectedExam.value = exam
+  examReportVisible.value = true
+}
+
+function openResource(resource: {
+  type: string
+  title?: string
+  date?: string
+  size?: string
+  format?: string
+}) {
+  if (patient.value.id === 'P-0001' && resource.type === '病理切片') {
+    selectedPathologyResource.value = {
+      title: resource.title ?? '病理切片',
+      date: resource.date ?? '—',
+      size: resource.size ?? '—',
+      format: resource.format ?? 'JPG',
+    }
+    pathologyViewerVisible.value = true
+    return
+  }
+
+  if (patient.value.id === 'P-0001' && resource.type === '基因检测') {
+    window.open(molecularReportUrl, '_blank', 'noopener,noreferrer')
+    return
+  }
+
+  ElMessage.info('原型演示：该原始资料将在资源查看器中打开')
 }
 
 // ---------- 疗效标签 ----------
@@ -329,21 +471,39 @@ const effType: Record<string, 'success' | 'primary' | 'warning' | 'danger' | 'in
   CR: 'success', PR: 'primary', SD: 'warning', PD: 'danger', '—': 'info',
 }
 
-// ---------- 随访预后：长期管理推导 ----------
-const latestFU = computed(() => patient.value.followUps[0])
-const diseaseState = computed(() => {
-  const o = latestFU.value?.outcome
-  if (!o) return '待补全'
-  if (o === '无病生存') return '无病生存'
-  if (o === '局部复发') return '局部复发'
-  if (o === '远处转移') return '远处转移'
-  if (o === '死亡') return '终点事件'
-  return o
-})
-const recurState = computed(() => {
-  const o = latestFU.value?.outcome
-  if (!o) return '待补全'
-  return o === '局部复发' || o === '远处转移' ? '存在复发 / 转移' : '未见复发 / 转移'
+// ---------- 疗效随访：记录型展示 ----------
+const efficacyEvaluations = computed(() =>
+  patient.value.timeline
+    .filter((n) =>
+      n.kind === '疗效评估' ||
+      n.title.includes('疗效评估') ||
+      !!n.compared?.match(/\b(CR|PR|SD|PD)\b/),
+    )
+    .map((n) => {
+      const result =
+        n.compared?.match(/\b(CR|PR|SD|PD)\b/)?.[1] ??
+        n.desc.match(/\b(CR|PR|SD|PD)\b/)?.[1] ??
+        '—'
+      return {
+        ...n,
+        result,
+        basis: n.title.replace(/（疗效评估）|疗效评估/g, '').trim() || n.title,
+        summary: n.compared ?? n.desc,
+      }
+    })
+    .sort((a, b) => b.date.localeCompare(a.date)),
+)
+
+const progressionRecords = computed(() => {
+  const seen = new Set<string>()
+  return [...patient.value.followUps]
+    .filter((f) => f.outcome === '局部复发' || f.outcome === '远处转移')
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .filter((f) => {
+      if (seen.has(f.outcome)) return false
+      seen.add(f.outcome)
+      return true
+    })
 })
 
 // ---------- 完整档案：数据资产完整性 ----------
@@ -365,10 +525,9 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
       <el-button text :icon="ArrowLeft" class="pd__back" @click="goBack">返回患者列表</el-button>
     </div>
 
-    <!-- ===================== 顶部全宽患者总览（三部分） ===================== -->
+    <!-- ===================== 顶部患者总览 ===================== -->
     <section class="pd__hero pf-card">
-      <!-- 左：身份信息 -->
-      <div class="pd__hero-col pd__hero-id">
+      <div class="pd__hero-top">
         <div class="pd__id-top">
           <div class="pd__avatar">{{ displayName.slice(-1) }}</div>
           <div class="pd__id-name">
@@ -385,50 +544,7 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
             </div>
           </div>
         </div>
-        <div class="pd__dx">
-          <div class="pd__dx-label">主要诊断</div>
-          <div class="pd__dx-main">{{ patient.diagnosis }}</div>
-          <div class="pd__dx-stage">
-            <span class="pd__dx-stage-k">TNM 分期</span>
-            <span class="pd__stage-pill">{{ patient.stage }}</span>
-          </div>
-        </div>
-      </div>
 
-      <!-- 中：临床状态焦点 -->
-      <div class="pd__hero-col pd__hero-clinical">
-        <div class="pd__clini-row">
-          <span class="pd__clini-label">当前临床状态</span>
-          <span class="pd__status-pill" :style="{ background: statusColor[patient.status] + '1a', color: statusColor[patient.status], borderColor: statusColor[patient.status] + '55' }">
-            <i class="pd__status-dot" :style="{ background: statusColor[patient.status] }"></i>{{ patient.status }}
-          </span>
-        </div>
-        <div class="pd__clini-row">
-          <span class="pd__clini-label">治疗阶段</span>
-          <span class="pd__clini-val">{{ treatmentPhaseText }}</span>
-        </div>
-        <div class="pd__clini-row pd__clini-row--block">
-          <span class="pd__clini-label">最近病情结论</span>
-          <span class="pd__clini-concl">{{ recentConclusion }}</span>
-        </div>
-      </div>
-
-      <!-- 右：关键指标 + 操作 -->
-      <div class="pd__hero-col pd__hero-metrics">
-        <div class="pd__metrics">
-          <div class="pd__metric">
-            <strong>{{ patient.followUps.length }}</strong><span>随访次数</span>
-          </div>
-          <div class="pd__metric">
-            <strong>{{ patient.treatments.length }}</strong><span>治疗线数</span>
-          </div>
-          <div class="pd__metric">
-            <strong>{{ patient.resources.length }}</strong><span>多模态资源</span>
-          </div>
-          <div class="pd__metric">
-            <strong class="pd__metric-sm">{{ patient.followUps[0]?.date || '—' }}</strong><span>最近随访日期</span>
-          </div>
-        </div>
         <div class="pd__ops">
           <el-button v-if="patient.level !== 'full'" round type="primary" plain @click="applyFullView">
             <el-icon><Lock /></el-icon>&nbsp;申请完整授权
@@ -438,55 +554,37 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
           </el-button>
         </div>
       </div>
-    </section>
 
-    <!-- 全局临床摘要（所有页签共享，原右侧四卡升级） -->
-    <section class="pd__summary">
-      <div class="pd__sum-cell">
-        <span class="pd__sum-dot" style="background:#06b6d4"></span>
-        <div class="pd__sum-meta">
-          <div class="pd__sum-k">当前治疗方案</div>
-          <div class="pd__sum-v">{{ summaryTreatment }}</div>
+      <div class="pd__hero-info">
+        <div class="pd__info-item pd__info-item--dx">
+          <span class="pd__info-k">主要诊断</span>
+          <strong class="pd__info-v">{{ patient.diagnosis }}</strong>
         </div>
-      </div>
-      <div class="pd__sum-cell">
-        <span class="pd__sum-dot" style="background:#2563eb"></span>
-        <div class="pd__sum-meta">
-          <div class="pd__sum-k">最近检查结论</div>
-          <div class="pd__sum-v">{{ summaryExam }}</div>
+        <div class="pd__info-item">
+          <span class="pd__info-k">TNM 分期</span>
+          <span class="pd__stage-pill">{{ patient.stage }}</span>
         </div>
-      </div>
-      <div class="pd__sum-cell">
-        <span class="pd__sum-dot" style="background:#8b5cf6"></span>
-        <div class="pd__sum-meta">
-          <div class="pd__sum-k">关键病理 / 分子</div>
-          <div class="pd__sum-v">{{ summaryMolecular }}</div>
-          <div class="pd__sum-sub">分子检测 {{ molecularCount }} 项</div>
+        <div class="pd__info-item">
+          <span class="pd__info-k">当前临床状态</span>
+          <span class="pd__status-pill" :style="{ background: statusColor[patient.status] + '1a', color: statusColor[patient.status], borderColor: statusColor[patient.status] + '55' }">
+            <i class="pd__status-dot" :style="{ background: statusColor[patient.status] }"></i>{{ patient.status }}
+          </span>
         </div>
-      </div>
-      <div class="pd__sum-cell">
-        <span class="pd__sum-dot" :style="{ background: statusColor[patient.status] }"></span>
-        <div class="pd__sum-meta">
-          <div class="pd__sum-k">随访状态</div>
-          <div class="pd__sum-v">{{ summaryFollowup }}</div>
+        <div class="pd__info-item">
+          <span class="pd__info-k">治疗阶段</span>
+          <strong class="pd__info-v">{{ treatmentPhaseText }}</strong>
+        </div>
+        <div class="pd__info-item">
+          <span class="pd__info-k">最近随访</span>
+          <strong class="pd__info-v">{{ patient.followUps[0]?.date || '—' }}</strong>
+        </div>
+        <div class="pd__info-item pd__info-item--conclusion">
+          <span class="pd__info-k">最近病情结论</span>
+          <span class="pd__info-text">{{ recentConclusion }}</span>
         </div>
       </div>
     </section>
 
-    <!-- 隐私 / 合成提示 -->
-    <div class="pd__notice" :class="{ 'pd__notice--masked': patient.level !== 'full' }">
-      <el-icon><Lock /></el-icon>
-      <span v-if="patient.level === 'full'">
-        当前为<strong>完全可见</strong>视图（本机构可信终端），姓名等原始 PII 可展示；所有访问已记入审计日志。
-      </span>
-      <span v-else>
-        当前为<strong>脱敏权限 · {{ levelText[patient.level] }}</strong>视图：姓名、证件号、联系方式按数据不出域策略遮蔽，完整字段需发起跨机构授权。
-      </span>
-    </div>
-    <div v-if="isSynth" class="pd__notice pd__notice--synth">
-      <el-icon><InfoFilled /></el-icon>
-      <span>该患者为列表快照，<strong>详细诊疗记录待补全</strong>；下方时间轴与摘要由主索引摘要生成，仅供定位参考。</span>
-    </div>
 
     <!-- ===================== 主体：左 临床导航轴 / 右 业务详情（导航置于右栏顶部，与左侧时间轴并列） ===================== -->
     <div class="pd__main">
@@ -494,18 +592,10 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
       <aside class="pd__axis">
         <div class="pd__axis-head">
           <h3 class="pd__h pd__h--inline">诊疗时间轴</h3>
-          <el-radio-group v-model="timelineFilter" size="small">
-            <el-radio-button
-              v-for="k in timelineFilters"
-              :key="k.value"
-              :value="k.value"
-              :style="timelineFilter === k.value ? { background: k.color, borderColor: k.color, color: '#fff' } : { color: k.color }"
-            >{{ k.label }}</el-radio-button>
-          </el-radio-group>
         </div>
         <el-timeline class="pd__tl">
           <el-timeline-item
-            v-for="node in filteredTimeline"
+            v-for="node in timelineAll"
             :key="node.id"
             :timestamp="`${node.date || '待补全'} · ${node.org}`"
             placement="top"
@@ -526,7 +616,7 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
             >
               <div class="pd__tl-title">
                 <el-tag size="small" effect="plain" :style="{ color: kindColor[node.kind], borderColor: kindColor[node.kind] }">
-                  {{ node.kind }}
+                  {{ kindLabel[node.kind] ?? node.kind }}
                 </el-tag>
                 <span>{{ node.title }}</span>
                 <span v-if="node.id === recentNodeId" class="pd__tl-badge pd__tl-badge--recent">最近事件</span>
@@ -540,26 +630,28 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
 
       <!-- 右侧：业务详情（导航在顶部，点击左侧事件联动切换并滚动高亮对应记录） -->
       <div class="pd__detail">
-        <!-- 一级业务导航：置于右栏顶部，与左侧时间轴并列 -->
-        <nav class="pd__nav">
-          <button
-            v-for="n in navItems"
-            :key="n.key"
-            class="pd__nav-item"
-            :class="{ 'is-active': activeNav === n.key }"
-            :style="activeNav === n.key ? { background: n.color, borderColor: n.color } : {}"
-            @click="activeNav = n.key"
-          >
-            <span class="pd__nav-dot" :style="{ background: n.color }"></span>
-            {{ n.label }}
-          </button>
-        </nav>
-        <!-- ① 就诊概览：患者跨机构真实门诊/急诊经历（与左侧事件级时间轴职责区分） -->
+        <!-- 一级业务导航：固定在右栏顶部 -->
+        <div class="pd__nav-sticky">
+          <nav class="pd__nav">
+            <button
+              v-for="n in navItems"
+              :key="n.key"
+              class="pd__nav-item"
+              :class="{ 'is-active': activeNav === n.key }"
+              :style="activeNav === n.key ? { background: n.color, borderColor: n.color } : {}"
+              @click="switchNav(n.key)"
+            >
+              <span class="pd__nav-dot" :style="{ background: n.color }"></span>
+              {{ n.label }}
+            </button>
+          </nav>
+        </div>
+        <!-- ① 就诊记录：患者跨机构真实就诊经历 -->
         <div v-if="activeNav === 'overview'">
           <div class="pd__group pd__group--flush" id="rec-clinical">
             <div class="pd__sec-head">
-              <h3 class="pd__h pd__h--inline">就诊概览</h3>
-              <span class="pd__visit-count">{{ visits.length }} 次就诊</span>
+              <h3 class="pd__h pd__h--inline">就诊记录</h3>
+
             </div>
             <div v-if="visits.length" class="pd__visits">
               <div
@@ -568,29 +660,31 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
                 :id="'visit-' + v.id"
                 class="pd__visit"
                 :class="{ 'pd__flash': flashVisitId === v.id }"
-                :style="{ borderLeftColor: visitTypeColor[v.type] }"
               >
                 <div class="pd__visit-head">
-                  <span class="pd__visit-type" :style="{ color: visitTypeColor[v.type], background: visitTypeColor[v.type] + '1a' }">{{ v.type }}</span>
-                  <span class="pd__visit-date">{{ v.date || '待补全' }}</span>
+                  <div class="pd__visit-title">
+                    <span class="pd__visit-type" :style="{ color: visitTypeColor[v.type], background: visitTypeColor[v.type] + '1a' }">{{ v.type }}</span>
+                    <strong>{{ v.date || '待补全' }}</strong>
+                  </div>
                   <span class="pd__visit-org">{{ v.org }}</span>
                 </div>
+
                 <div class="pd__visit-body">
                   <div class="pd__visit-row">
                     <span class="pd__visit-k">就诊科室</span>
-                    <span class="pd__visit-v">{{ v.dept }}</span>
-                  </div>
-                  <div class="pd__visit-row">
-                    <span class="pd__visit-k">就诊原因</span>
-                    <span class="pd__visit-v">{{ v.reason }}</span>
+                    <strong class="pd__visit-v">{{ v.dept }}</strong>
                   </div>
                   <div class="pd__visit-row">
                     <span class="pd__visit-k">主要诊断</span>
-                    <span class="pd__visit-v">{{ v.diagnosis }}</span>
+                    <strong class="pd__visit-v">{{ v.diagnosis }}</strong>
                   </div>
-                  <div class="pd__visit-row">
+                  <div class="pd__visit-row pd__visit-row--wide">
+                    <span class="pd__visit-k">就诊原因</span>
+                    <strong class="pd__visit-v">{{ v.reason }}</strong>
+                  </div>
+                  <div class="pd__visit-row pd__visit-row--wide">
                     <span class="pd__visit-k">就诊去向</span>
-                    <span class="pd__visit-v pd__visit-concl">{{ v.disposition }}</span>
+                    <strong class="pd__visit-v">{{ v.disposition }}</strong>
                   </div>
                 </div>
               </div>
@@ -599,189 +693,466 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
           </div>
         </div>
 
-        <!-- ② 检查检验：趋势 + 全部指标 + 异常 + 最近检查 -->
+        <!-- ② 检查检验 -->
         <div v-else-if="activeNav === 'exams'">
-          <div class="pd__exams-top">
-            <div class="pd__group pd__exams-chart">
-              <div class="pd__sec-head">
-                <h3 class="pd__h pd__h--inline">关键指标趋势</h3>
-                <el-radio-group v-model="activeLabKey" size="small">
-                  <el-radio-button v-for="l in patient.labs" :key="l.key" :value="l.key">{{ l.name.replace(/\s.*/, '') }}</el-radio-button>
-                </el-radio-group>
-              </div>
-              <EChart v-if="activeLab" :option="labOption" />
-              <el-empty v-else description="暂无检验指标" :image-size="80" />
+          <!-- ① 近期检验：分类筛选 + 紧凑指标表 -->
+          <section class="pd__group pd__labs">
+            <div class="pd__sec-head">
+              <h3 class="pd__h pd__h--inline">近期检验</h3>
+              <el-radio-group v-model="labCat" size="small">
+                <el-radio-button v-for="c in labCategories" :key="c" :value="c">{{ c }}</el-radio-button>
+              </el-radio-group>
             </div>
-            <div class="pd__group pd__exams-list">
-              <h3 class="pd__h">全部指标</h3>
-              <div v-if="patient.labs.length" class="pd__metric-list">
-                <div v-for="l in patient.labs" :key="l.key" class="pd__metric-item" :class="{ 'is-active': l.key === activeLabKey }" @click="activeLabKey = l.key">
-                  <div class="pd__metric-top">
-                    <span class="pd__metric-name">{{ l.name }}</span>
-                    <span class="pd__metric-val" :style="{ color: labAbnormal(l) ? '#f43f5e' : '#10b981' }">
-                      {{ labLatest(l).value }}<i>{{ l.unit }}</i>
-                    </span>
-                  </div>
-                  <EChart class="pd__spark" :option="makeSpark(l)" />
-                  <div class="pd__metric-ref">参考 {{ l.refLower }}~{{ l.refUpper }} {{ l.unit }}</div>
+            <el-table v-if="filteredLabs.length" :data="filteredLabs" border size="small" class="pd__table">
+              <el-table-column label="检验项目" min-width="150">
+                <template #default="{ row }">
+                  <div class="pd__lab-name">{{ row.name }}</div>
+                  <div class="pd__lab-cat">{{ labCategoryMap[row.key] }}</div>
+                </template>
+              </el-table-column>
+              <el-table-column label="最近结果" width="104" align="center">
+                <template #default="{ row }">
+                  <span class="pd__lab-val" :style="{ color: labStatus(row).tone, fontWeight: 700 }">{{ labLatestPoint(row).value }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="单位" width="78" align="center">
+                <template #default="{ row }"><span class="pd__muted">{{ row.unit }}</span></template>
+              </el-table-column>
+              <el-table-column label="状态" width="80" align="center">
+                <template #default="{ row }">
+                  <span class="pd__status-chip" :style="{ color: labStatus(row).tone, borderColor: labStatus(row).tone + '55', background: labStatus(row).tone + '12' }">{{ labStatus(row).text }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="较前次" width="104" align="center">
+                <template #default="{ row }"><span :style="{ color: labDelta(row).tone, fontWeight: 600 }">{{ labDelta(row).text }}</span></template>
+              </el-table-column>
+              <el-table-column label="参考范围" width="150" align="center">
+                <template #default="{ row }"><span class="pd__muted">{{ row.refLower }} ~ {{ row.refUpper }}</span></template>
+              </el-table-column>
+              <el-table-column label="检验日期" width="104" align="center">
+                <template #default="{ row }">{{ labLatestPoint(row).date }}</template>
+              </el-table-column>
+            </el-table>
+            <el-empty v-else description="暂无检验记录" :image-size="70" />
+          </section>
+
+          <!-- ② 近期检查：类型筛选 + 纵向检查记录卡 -->
+          <section class="pd__group pd__exams">
+            <div class="pd__sec-head">
+              <h3 class="pd__h pd__h--inline">近期检查</h3>
+              <el-radio-group v-model="examType" size="small">
+                <el-radio-button v-for="t in examTypes" :key="t" :value="t">{{ t }}</el-radio-button>
+              </el-radio-group>
+            </div>
+            <div v-if="filteredExams.length" class="pd__exam-list">
+              <div
+                v-for="e in filteredExams"
+                :key="e.id"
+                :id="'rec-' + e.id"
+                class="pd__exam-card"
+                :class="{ 'pd__flash': highlightRef === e.id }"
+              >
+                <div class="pd__exam-head">
+                  <span class="pd__exam-type" :style="{ color: examTypeColor[e.type], borderColor: examTypeColor[e.type] }">{{ e.type }}</span>
+                  <span class="pd__exam-title">{{ e.title }}</span>
+                  <span class="pd__exam-date">{{ e.date }}</span>
+                </div>
+                <div class="pd__exam-org"><el-icon><Connection /></el-icon>{{ e.org }}</div>
+                <div class="pd__exam-desc">{{ e.desc }}</div>
+                <div v-if="e.compared" class="pd__exam-compared">
+                  <span class="pd__exam-cmp-label">较前变化</span>{{ e.compared }}
+                </div>
+                <div class="pd__exam-foot">
+                  <el-button size="small" link type="primary" :icon="Document" @click="openExamReport(e)">查看报告</el-button>
                 </div>
               </div>
-              <el-empty v-else description="暂无检验指标" :image-size="70" />
             </div>
-          </div>
-          <div class="pd__exams-bottom">
-            <div class="pd__group">
-              <h3 class="pd__h">异常变化</h3>
-              <div v-if="abnormalPoints.length" class="pd__abn">
-                <div v-for="(a, i) in abnormalPoints" :key="i" class="pd__abn-row">
-                  <span class="pd__abn-dot"></span>
-                  <span class="pd__abn-lab">{{ a.lab }}</span>
-                  <span class="pd__abn-val">{{ a.value }} {{ a.unit }}</span>
-                  <span class="pd__abn-date">{{ a.date }}</span>
-                  <span class="pd__abn-ref">参考 {{ a.ref }}</span>
-                </div>
-              </div>
-              <el-empty v-else description="无超界记录" :image-size="70" />
-            </div>
-            <div class="pd__group">
-              <h3 class="pd__h">最近检查</h3>
-              <div v-if="recentExams.length" class="pd__recent">
-                <div v-for="e in recentExams" :key="e.id" :id="'rec-' + e.id" class="pd__recent-row" :class="{ 'pd__flash': highlightRef === e.id }">
-                  <span class="pd__recent-date">{{ e.date || '待补全' }}</span>
-                  <div class="pd__recent-body">
-                    <div class="pd__recent-title">{{ e.title }}</div>
-                    <div class="pd__recent-desc">{{ e.desc }}</div>
-                  </div>
-                </div>
-              </div>
-              <el-empty v-else description="暂无检查记录" :image-size="70" />
-            </div>
-          </div>
+            <el-empty v-else description="暂无检查记录" :image-size="70" />
+          </section>
         </div>
 
-        <!-- ④ 病理与分子：诊断 → 分期 → 分子 → 报告 -->
-        <div v-else-if="activeNav === 'pathology'">
+        <!-- ③ 诊断：临床诊断与分期 + 病理诊断 + 分子检测 + 原始资料 -->
+        <div v-else-if="activeNav === 'diagnosis'">
           <div class="pd__group">
-            <h3 class="pd__h">诊断与分期（{{ patient.diagnoses.length }}）</h3>
-            <div class="pd__dx-list">
+            <h3 class="pd__h">临床诊断与分期</h3>
+            <div class="pd__diagnosis-summary">
+              <div class="pd__diagnosis-main">
+                <span class="pd__diagnosis-label">主要诊断</span>
+                <strong>{{ patient.diagnosis }}</strong>
+              </div>
+              <div class="pd__diagnosis-stage">
+                <span>当前分期</span>
+                <strong>{{ patient.stage }}</strong>
+              </div>
+            </div>
+
+            <div v-if="clinicalDiagnoses.length" class="pd__dx-list pd__dx-list--mt">
               <div
-                v-for="d in patient.diagnoses"
+                v-for="d in clinicalDiagnoses"
                 :key="d.id"
                 :id="'rec-' + d.id"
                 class="pd__dx-card"
                 :class="{ 'pd__flash': highlightRef === d.id }"
               >
                 <div class="pd__dx-card-head">
-                  <span class="pd__dx-card-type">{{ d.type }}</span>
-                  <span class="pd__dx-card-stage" :style="{ color: '#8b5cf6', borderColor: 'rgba(139,92,246,0.4)' }">{{ d.t }} {{ d.n }} {{ d.m }} · {{ d.stage }}</span>
+                  <div>
+                    <div class="pd__dx-card-type">{{ d.type }}</div>
+                    <div class="pd__dx-card-title">{{ d.histology }} · {{ d.differentiation }} · {{ d.site }}</div>
+                  </div>
+                  <span class="pd__dx-card-stage">{{ d.t }}{{ d.n }}{{ d.m }} · {{ d.stage }}</span>
                 </div>
-                <div class="pd__dx-card-main">{{ d.histology }} · {{ d.differentiation }} · {{ d.site }}</div>
-                <div class="pd__dx-card-tag">依据 {{ d.basis }} · {{ d.org }} · {{ d.date }}</div>
+                <div class="pd__dx-card-basis">诊断依据：{{ d.basis }}</div>
+                <div class="pd__dx-card-org">{{ d.org }} · {{ d.date || '日期待补全' }}</div>
               </div>
             </div>
           </div>
+
           <div class="pd__group">
-            <h3 class="pd__h">分子标志物</h3>
-            <div v-if="molecularCount" class="pd__chain-mol-list">
-              <div v-for="r in patient.resources.filter((x) => x.type === '基因检测')" :key="r.id" class="pd__chain-mol">
-                {{ r.title }}
+            <h3 class="pd__h">病理诊断</h3>
+            <div v-if="pathologyDiagnoses.length" class="pd__path-records">
+              <div
+                v-for="d in pathologyDiagnoses"
+                :key="d.id"
+                :id="'rec-' + d.id"
+                class="pd__path-record"
+                :class="{ 'pd__flash': highlightRef === d.id }"
+              >
+                <div class="pd__path-record-head">
+                  <div>
+                    <div class="pd__path-record-title">{{ d.basis.includes('ESD') ? 'ESD术后病理' : d.basis.includes('术后病理') ? '术后病理' : '胃镜活检病理' }}</div>
+                    <div class="pd__path-record-sub">{{ d.org }} · {{ d.date }}</div>
+                  </div>
+                </div>
+
+                <div class="pd__detail-grid">
+                  <div class="pd__detail-item">
+                    <span>标本类型</span>
+                    <strong>{{ pathologySpecimen(d) }}</strong>
+                  </div>
+                  <div class="pd__detail-item">
+                    <span>组织学类型</span>
+                    <strong>{{ d.histology }}</strong>
+                  </div>
+                  <div class="pd__detail-item">
+                    <span>分化程度</span>
+                    <strong>{{ d.differentiation }}</strong>
+                  </div>
+                  <div class="pd__detail-item">
+                    <span>病变部位</span>
+                    <strong>{{ d.site }}</strong>
+                  </div>
+                  <div class="pd__detail-item pd__detail-item--wide">
+                    <span>诊断依据</span>
+                    <strong>{{ d.basis }}</strong>
+                  </div>
+                  <div v-if="pathologyNote(d)" class="pd__detail-item pd__detail-item--wide">
+                    <span>病理要点</span>
+                    <strong>{{ pathologyNote(d) }}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <el-empty v-else description="暂无病理诊断" :image-size="70" />
+          </div>
+
+          <div class="pd__group">
+            <h3 class="pd__h">分子检测</h3>
+            <div v-if="molecularRecords.length" class="pd__molecular-records">
+              <div v-for="m in molecularRecords" :key="m.id" class="pd__molecular-record">
+                <div class="pd__molecular-record-head">
+                  <div>
+                    <div class="pd__molecular-record-title">{{ m.title }}</div>
+                    <div class="pd__molecular-record-sub">{{ m.sub }}</div>
+                  </div>
+                  <span class="pd__molecular-date">{{ m.org }} · {{ m.date }}</span>
+                </div>
+
+                <div class="pd__detail-grid pd__detail-grid--molecular">
+                  <div class="pd__detail-item">
+                    <span>检测项目</span>
+                    <strong>{{ m.title }}</strong>
+                  </div>
+                  <div class="pd__detail-item">
+                    <span>检测结果</span>
+                    <strong class="pd__molecular-value">{{ m.result }}</strong>
+                  </div>
+                  <div class="pd__detail-item pd__detail-item--wide">
+                    <span>结果说明</span>
+                    <strong>{{ m.note }}</strong>
+                  </div>
+                </div>
               </div>
             </div>
             <div v-else class="pd__chain-empty">暂无分子检测</div>
           </div>
+
           <div class="pd__group">
-            <h3 class="pd__h">检测报告</h3>
-            <div v-if="patient.resources.filter((x) => x.type === '基因检测').length" class="pd__chain-rep-list">
-              <div v-for="r in patient.resources.filter((x) => x.type === '基因检测')" :key="r.id" class="pd__chain-rep">
-                <span>{{ r.format }} · {{ r.size }}</span>
-                <span class="pd__mono">{{ r.date }}</span>
-                <el-tag size="small" effect="plain" :type="r.status === '待对齐' ? 'warning' : 'success'">{{ r.status }}</el-tag>
+            <h3 class="pd__h">原始资料</h3>
+            <div v-if="pathologyResources.length" class="pd__path-res-list">
+              <div v-for="r in pathologyResources" :key="r.id" class="pd__path-res">
+                <div class="pd__path-res-main">
+                  <span class="pd__path-res-type" :class="{ 'is-molecular': r.type === '基因检测' }">
+                    {{ r.type === '基因检测' ? '分子原始报告' : '病理原始切片' }}
+                  </span>
+                  <div>
+                    <div class="pd__path-res-title">{{ r.title }}</div>
+                    <div class="pd__path-res-meta">{{ r.format }} · {{ r.size }} · {{ r.date }}</div>
+                  </div>
+                </div>
+                <div class="pd__path-res-actions">
+                  <el-tag size="small" effect="plain" :type="r.status === '待对齐' ? 'warning' : 'success'">{{ r.status }}</el-tag>
+                  <el-button size="small" link type="primary" @click="openResource(r)">
+                    {{ r.type === '病理切片' ? '查看切片' : '查看原报告' }}
+                  </el-button>
+                </div>
               </div>
             </div>
-            <div v-else class="pd__chain-empty">暂无报告</div>
+            <div v-else class="pd__chain-empty">暂无原始资料</div>
           </div>
         </div>
 
-        <!-- ⑤ 治疗记录：连续关系流程 -->
+        <!-- ④ 治疗记录：治疗路径 + 治疗决策 + 具体治疗 -->
         <div v-else-if="activeNav === 'treatment'">
-          <div v-if="patient.treatments.length" class="pd__txflow">
-            <div v-for="(t, i) in patient.treatments" :key="t.id" :id="'rec-' + t.id" class="pd__txnode" :class="{ 'is-doing': t.status === '进行中', 'pd__flash': highlightRef === t.id }">
-              <div class="pd__tx-rail">
-                <span class="pd__tx-dot"></span>
-                <span v-if="i < patient.treatments.length - 1" class="pd__tx-line"></span>
-              </div>
-              <div class="pd__tx-card">
-                <div class="pd__tx-head">
-                  <div class="pd__tx-title">
-                    <el-tag size="small" effect="dark" round>{{ t.line }}</el-tag>
-                    <span class="pd__tx-name">{{ t.name }}</span>
+          <div v-if="patient.treatments.length" class="pd__group">
+            <h3 class="pd__h">治疗路径</h3>
+            <div class="pd__tx-path">
+              <template v-for="(t, i) in treatmentPath" :key="t.id">
+                <div class="pd__tx-path-item">
+                  <div class="pd__tx-path-top">
+                    <span class="pd__tx-path-line">{{ t.line }}</span>
+                    <span class="pd__tx-path-result">{{ t.displayResult }}</span>
                   </div>
-                  <el-tag size="small" :type="effType[t.efficacy]" effect="light">疗效 {{ t.efficacy }}</el-tag>
-                  <span class="pd__tx-status" :class="{ 'pd__tx-status--doing': t.status === '进行中' }">{{ t.status }}</span>
+                  <strong>{{ t.name }}</strong>
+                  <span>{{ t.startDate }}{{ t.endDate !== '—' && t.endDate !== t.startDate ? ` ～ ${t.endDate}` : '' }}</span>
                 </div>
-                <div class="pd__tx-meta">
-                  <span>{{ t.modality }}</span>
-                  <span>{{ t.scheme }}</span>
-                  <span>{{ t.cycles }}</span>
-                  <span>{{ t.startDate }} ~ {{ t.endDate === '—' ? '至今' : t.endDate }}</span>
-                  <span>{{ t.org }}</span>
+                <span v-if="i < treatmentPath.length - 1" class="pd__tx-path-arrow">→</span>
+              </template>
+            </div>
+          </div>
+
+          <div
+            v-if="treatmentDecision"
+            id="rec-treatment-decision"
+            class="pd__group"
+            :class="{ 'pd__flash': highlightRef === 'treatment-decision' }"
+          >
+            <h3 class="pd__h">治疗决策</h3>
+            <div class="pd__tx-decision">
+              <div class="pd__tx-decision-head">
+                <div>
+                  <strong>{{ treatmentDecision.title }}</strong>
+                  <span>{{ treatmentDecision.org }} · {{ treatmentDecision.date }}</span>
                 </div>
-                <div v-if="i < patient.treatments.length - 1" class="pd__tx-next">下一阶段：{{ patient.treatments[i + 1].line }}</div>
+                <el-tag size="small" effect="light" type="primary">MDT</el-tag>
+              </div>
+
+              <div class="pd__tx-detail-grid">
+                <div class="pd__tx-detail-item">
+                  <span>临床诊断</span>
+                  <strong>
+                    {{ patient.diagnosis }}
+                    <template v-if="treatmentClinicalDiagnosis">
+                      · {{ treatmentClinicalDiagnosis.t }}{{ treatmentClinicalDiagnosis.n }}{{ treatmentClinicalDiagnosis.m }}
+                      · {{ treatmentClinicalDiagnosis.stage }}
+                    </template>
+                  </strong>
+                </div>
+                <div class="pd__tx-detail-item">
+                  <span>治疗策略</span>
+                  <strong>{{ patient.treatments.map((t) => t.line).join(' → ') }}</strong>
+                </div>
+                <div class="pd__tx-detail-item pd__tx-detail-item--wide">
+                  <span>MDT 结论</span>
+                  <strong>{{ treatmentDecision.desc }}</strong>
+                </div>
               </div>
             </div>
           </div>
-          <el-empty v-else description="暂无治疗记录" :image-size="80" />
+
+          <div class="pd__group">
+            <h3 class="pd__h">治疗记录</h3>
+            <div v-if="patient.treatments.length" class="pd__tx-records">
+              <div
+                v-for="t in treatmentPath"
+                :key="t.id"
+                :id="'rec-' + t.id"
+                class="pd__tx-record"
+                :class="{ 'is-doing': t.status === '进行中', 'pd__flash': highlightRef === t.id }"
+              >
+                <div class="pd__tx-record-head">
+                  <div class="pd__tx-record-title">
+                    <el-tag size="small" effect="dark" round>{{ t.line }}</el-tag>
+                    <strong>{{ t.name }}</strong>
+                  </div>
+                  <span class="pd__tx-status" :class="{ 'pd__tx-status--doing': t.status === '进行中' }">
+                    {{ t.status }}
+                  </span>
+                </div>
+
+                <div class="pd__tx-detail-grid">
+                  <div class="pd__tx-detail-item">
+                    <span>治疗方式</span>
+                    <strong>{{ t.modality }}</strong>
+                  </div>
+                  <div class="pd__tx-detail-item">
+                    <span>{{ t.modality === '手术' ? '手术方式' : t.modality === '内镜治疗' ? '治疗术式' : '治疗方案' }}</span>
+                    <strong>{{ t.scheme }}</strong>
+                  </div>
+
+                  <div v-if="t.modality !== '手术' && t.modality !== '内镜治疗' && t.cycles !== '—'" class="pd__tx-detail-item">
+                    <span>治疗周期</span>
+                    <strong>{{ t.cycles }}</strong>
+                  </div>
+                  <div class="pd__tx-detail-item">
+                    <span>{{ t.modality === '手术' ? '手术日期' : t.modality === '内镜治疗' ? '治疗日期' : '治疗日期' }}</span>
+                    <strong>
+                      {{ t.startDate }}
+                      <template v-if="t.endDate !== '—' && t.endDate !== t.startDate"> ～ {{ t.endDate }}</template>
+                      <template v-else-if="t.endDate === '—'"> ～ 至今</template>
+                    </strong>
+                  </div>
+
+                  <div v-if="t.modality === '手术' || t.modality === '内镜治疗'" class="pd__tx-detail-item">
+                    <span>切除情况</span>
+                    <strong>{{ t.displayResult }}</strong>
+                  </div>
+                  <div v-else-if="t.efficacy !== '—'" class="pd__tx-detail-item">
+                    <span>疗效评估</span>
+                    <strong>{{ t.efficacy }}</strong>
+                  </div>
+
+                  <div class="pd__tx-detail-item">
+                    <span>治疗机构</span>
+                    <strong>{{ t.org }}</strong>
+                  </div>
+
+                  <div v-if="(t.modality === '手术' || t.modality === '内镜治疗') && postoperativePathology" class="pd__tx-detail-item pd__tx-detail-item--wide">
+                    <span>术后病理</span>
+                    <strong>{{ postoperativePathology.histology }} · {{ postoperativePathology.differentiation }}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <el-empty v-else description="暂无治疗记录" :image-size="80" />
+          </div>
         </div>
 
-        <!-- ⑥ 随访预后：长期管理 -->
+        <!-- ⑤ 疗效随访：随访记录 + 疗效评估 + 复发转移 -->
         <div v-else-if="activeNav === 'followup'">
-          <div class="pd__group pd__prog">
-            <h3 class="pd__h">长期管理概览</h3>
-            <div class="pd__prog-grid">
-              <div class="pd__prog-cell">
-                <div class="pd__prog-k">疾病状态</div>
-                <div class="pd__prog-v" :style="{ color: diseaseState === '无病生存' ? '#10b981' : diseaseState === '待补全' ? 'var(--pf-text-faint)' : '#f59e0b' }">{{ diseaseState }}</div>
-              </div>
-              <div class="pd__prog-cell">
-                <div class="pd__prog-k">生存结局</div>
-                <div class="pd__prog-v">{{ latestFU?.outcome ?? '待补全' }}</div>
-              </div>
-              <div class="pd__prog-cell">
-                <div class="pd__prog-k">复发 / 转移</div>
-                <div class="pd__prog-v" :style="{ color: recurState.startsWith('存在') ? '#f43f5e' : 'var(--pf-text)' }">{{ recurState }}</div>
-              </div>
-              <div class="pd__prog-cell">
-                <div class="pd__prog-k">下一次随访</div>
-                <div class="pd__prog-v">{{ nextFollowUp }}</div>
-              </div>
-            </div>
-          </div>
           <div class="pd__group">
-            <h3 class="pd__h">随访记录（{{ patient.followUps.length }} 条）</h3>
-              <div v-if="patient.followUps.length" class="pd__fu-list">
-              <div v-for="f in patient.followUps" :key="f.id" :id="'rec-' + f.id" class="pd__fu-row" :class="{ 'pd__flash': highlightRef === f.id }">
-                <div class="pd__fu-date">{{ f.date }}</div>
-                <div class="pd__fu-body">
-                  <div class="pd__fu-top">
-                    <el-tag size="small" :type="f.outcome === '无病生存' ? 'success' : f.outcome === '死亡' ? 'danger' : 'warning'" effect="light">{{ f.outcome }}</el-tag>
-                    <span class="pd__fu-mod">{{ f.modality }}</span>
-                    <span class="pd__fu-next">下次 {{ f.nextDate }}</span>
-                    <span class="pd__fu-org">{{ f.org }}</span>
+            <h3 class="pd__h">随访记录</h3>
+            <div v-if="patient.followUps.length" class="pd__follow-records">
+              <div
+                v-for="f in patient.followUps"
+                :key="f.id"
+                :id="'rec-' + f.id"
+                class="pd__follow-record"
+                :class="{ 'pd__flash': highlightRef === f.id }"
+              >
+                <div class="pd__follow-head">
+                  <div class="pd__follow-title">
+                    <el-tag
+                      size="small"
+                      :type="f.outcome === '无病生存' ? 'success' : f.outcome === '死亡' ? 'danger' : 'warning'"
+                      effect="light"
+                    >
+                      {{ f.modality }}
+                    </el-tag>
+                    <strong>{{ f.date }}</strong>
                   </div>
-                  <div class="pd__fu-sum">{{ f.summary }}</div>
+                  <span>{{ f.org }}</span>
+                </div>
+
+                <div class="pd__follow-grid">
+                  <div class="pd__follow-item">
+                    <span>随访结局</span>
+                    <strong>{{ f.outcome }}</strong>
+                  </div>
+                  <div class="pd__follow-item">
+                    <span>下次随访</span>
+                    <strong>{{ f.nextDate }}</strong>
+                  </div>
+                  <div class="pd__follow-item pd__follow-item--wide">
+                    <span>随访情况</span>
+                    <strong>{{ f.summary }}</strong>
+                  </div>
                 </div>
               </div>
             </div>
             <el-empty v-else description="暂无随访记录" :image-size="80" />
           </div>
+
+          <div v-if="efficacyEvaluations.length" class="pd__group">
+            <h3 class="pd__h">疗效评估</h3>
+            <div class="pd__eval-records">
+              <div
+                v-for="e in efficacyEvaluations"
+                :key="e.id"
+                :id="'rec-eval-' + e.id"
+                class="pd__eval-record"
+                :class="{ 'pd__flash': highlightRef === 'eval-' + e.id }"
+              >
+                <div class="pd__follow-head">
+                  <div class="pd__follow-title">
+                    <el-tag size="small" :type="effType[e.result]" effect="light">{{ e.result }}</el-tag>
+                    <strong>{{ e.date }}</strong>
+                  </div>
+                  <span>{{ e.org }}</span>
+                </div>
+
+                <div class="pd__follow-grid">
+                  <div class="pd__follow-item">
+                    <span>评估依据</span>
+                    <strong>{{ e.basis }}</strong>
+                  </div>
+                  <div class="pd__follow-item">
+                    <span>评估结果</span>
+                    <strong>{{ e.result }}</strong>
+                  </div>
+                  <div class="pd__follow-item pd__follow-item--wide">
+                    <span>疾病变化</span>
+                    <strong>{{ e.summary }}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="progressionRecords.length" class="pd__group">
+            <h3 class="pd__h">复发 / 转移记录</h3>
+            <div class="pd__progression-records">
+              <div
+                v-for="f in progressionRecords"
+                :key="f.id"
+                :id="'rec-progression-' + f.id"
+                class="pd__progression-record"
+                :class="{ 'pd__flash': highlightRef === 'progression-' + f.id }"
+              >
+                <div class="pd__follow-head">
+                  <div class="pd__follow-title">
+                    <el-tag size="small" type="danger" effect="light">{{ f.outcome }}</el-tag>
+                    <strong>{{ f.date }}</strong>
+                  </div>
+                  <span>{{ f.org }}</span>
+                </div>
+
+                <div class="pd__follow-grid">
+                  <div class="pd__follow-item pd__follow-item--wide">
+                    <span>记录说明</span>
+                    <strong>{{ f.summary }}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- ⑦ 完整档案：数据资产视图 -->
+        <!-- ⑥ 完整档案：数据资产视图 -->
         <div v-else-if="activeNav === 'archive'">
           <div class="pd__group">
-            <h3 class="pd__h">多模态资源（{{ patient.resources.length }} 项）</h3>
+            <h3 class="pd__h">多模态资源</h3>
             <div v-if="patient.resources.length" class="pd__ress">
-              <div v-for="r in patient.resources" :key="r.id" class="pd__res" @click="openResource">
+              <div v-for="r in patient.resources" :key="r.id" class="pd__res" @click="openResource(r)">
                 <span class="pd__res-ic" :style="{ color: resIconColor[r.type] }"><el-icon><component :is="resourceIcon[r.type]" /></el-icon></span>
                 <div class="pd__res-body">
                   <div class="pd__res-title">{{ r.title }}</div>
@@ -821,7 +1192,7 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
           </div>
 
           <div class="pd__group">
-            <h3 class="pd__h">档案完整性（{{ completeCount }} / {{ completeness.length }}）</h3>
+            <h3 class="pd__h">档案完整性</h3>
             <div class="pd__complete">
               <div v-for="c in completeness" :key="c.key" class="pd__comp-cell" :class="{ 'is-ok': c.ok }">
                 <span class="pd__comp-dot"></span>{{ c.key }}
@@ -853,6 +1224,107 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
         </div>
       </div>
     </div>
+
+    <el-dialog
+      v-model="examReportVisible"
+      :title="selectedExam?.title || '检查报告'"
+      width="900px"
+      class="pd__exam-dialog"
+      destroy-on-close
+      align-center
+    >
+      <div v-if="selectedExam" class="pd__report">
+        <div class="pd__report-meta">
+          <div>
+            <span>检查类型</span>
+            <strong>{{ selectedExam.type }}</strong>
+          </div>
+          <div>
+            <span>检查日期</span>
+            <strong>{{ selectedExam.date }}</strong>
+          </div>
+          <div>
+            <span>检查机构</span>
+            <strong>{{ selectedExam.org }}</strong>
+          </div>
+        </div>
+
+        <section class="pd__report-section">
+          <h4>检查结论</h4>
+          <p>{{ selectedExam.desc }}</p>
+          <div v-if="selectedExam.compared" class="pd__report-compared">
+            <span>较前变化</span>
+            {{ selectedExam.compared }}
+          </div>
+        </section>
+
+        <section class="pd__report-section">
+          <h4>代表影像</h4>
+          <div v-if="selectedExamImage" class="pd__report-image">
+            <el-image
+              :src="selectedExamImage"
+              :preview-src-list="[selectedExamImage]"
+              fit="contain"
+              preview-teleported
+            />
+            <div class="pd__report-image-tip">点击影像可放大查看</div>
+          </div>
+          <div v-else class="pd__report-empty">当前检查暂无演示影像，保留报告结论展示。</div>
+        </section>
+
+        <div class="pd__report-note">
+          演示影像仅用于原型展示；正式系统中由检查记录关联原始 DICOM / 内镜影像资源，并按授权范围访问。
+        </div>
+      </div>
+    </el-dialog>
+
+    <el-dialog
+      v-model="pathologyViewerVisible"
+      title="病理切片"
+      width="900px"
+      class="pd__exam-dialog"
+      destroy-on-close
+      align-center
+    >
+      <div v-if="selectedPathologyResource" class="pd__report">
+        <div class="pd__report-meta">
+          <div>
+            <span>资料名称</span>
+            <strong>{{ selectedPathologyResource.title }}</strong>
+          </div>
+          <div>
+            <span>资料日期</span>
+            <strong>{{ selectedPathologyResource.date }}</strong>
+          </div>
+          <div>
+            <span>资源格式</span>
+            <strong>{{ selectedPathologyResource.format }}</strong>
+          </div>
+        </div>
+
+        <section class="pd__report-section">
+          <h4>代表性病理切片</h4>
+          <div class="pd__report-image pd__pathology-image">
+            <el-image
+              :src="pathologyImage"
+              :preview-src-list="[pathologyImage]"
+              fit="contain"
+              preview-teleported
+            />
+            <div class="pd__report-image-tip">点击切片可放大查看</div>
+          </div>
+        </section>
+
+        <section class="pd__report-section">
+          <h4>切片说明</h4>
+          <p>食管鳞状细胞癌 H&E 染色代表性显微图像，用于原型演示病理资源查看能力。</p>
+        </section>
+
+        <div class="pd__report-note">
+          当前为 JPG 演示切片；正式系统可对接 SVS / NDPI 等全视野数字病理切片及专业阅片器，并按授权范围访问。
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -871,29 +1343,23 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
 
 /* ===================== 顶部总览 ===================== */
 .pd__hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1.05fr);
-  gap: 0;
-  padding: 0;
-  overflow: hidden;
+  padding: 20px 24px;
 }
-.pd__hero-col {
-  padding: 22px 24px;
-}
-.pd__hero-col + .pd__hero-col {
-  border-left: 1px solid var(--pf-border);
-}
-.pd__hero-id {
-  background: rgba(37, 99, 235, 0.03);
+.pd__hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
 }
 .pd__id-top {
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
 }
 .pd__avatar {
-  width: 56px;
-  height: 56px;
+  width: 54px;
+  height: 54px;
   flex: none;
   border-radius: 14px;
   display: grid;
@@ -918,7 +1384,7 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 7px;
 }
 .pd__chip {
   font-size: 12px;
@@ -932,32 +1398,63 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
   color: #0e7490;
   background: rgba(6, 182, 212, 0.1);
 }
-.pd__dx {
+.pd__ops {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.pd__hero-info {
+  display: grid;
+  grid-template-columns: minmax(230px, 1.35fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(180px, 1fr) minmax(120px, 0.65fr);
+  gap: 0;
   margin-top: 18px;
   padding-top: 16px;
   border-top: 1px dashed var(--pf-border);
 }
-.pd__dx-label {
+.pd__info-item {
+  min-width: 0;
+  padding: 0 18px;
+  border-left: 1px solid var(--pf-border);
+}
+.pd__info-item:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+.pd__info-k {
+  display: block;
   font-size: 12px;
   color: var(--pf-text-faint);
-  letter-spacing: 0.08em;
+  margin-bottom: 6px;
 }
-.pd__dx-main {
-  font-size: 17px;
+.pd__info-v {
+  display: block;
+  font-size: 14px;
   font-weight: 700;
-  margin-top: 4px;
+  color: var(--pf-text);
+  line-height: 1.45;
 }
-.pd__dx-stage {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
+.pd__info-item--conclusion {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 94px 1fr;
+  align-items: start;
+  gap: 12px;
+  padding: 14px 0 0;
+  margin-top: 14px;
+  border-left: none;
+  border-top: 1px solid var(--pf-border);
 }
-.pd__dx-stage-k {
-  font-size: 12px;
-  color: var(--pf-text-faint);
+.pd__info-item--conclusion .pd__info-k {
+  margin: 0;
+}
+.pd__info-text {
+  font-size: 14px;
+  color: var(--pf-text-soft);
+  line-height: 1.55;
 }
 .pd__stage-pill {
+  display: inline-flex;
   font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
   font-size: 13px;
   font-weight: 600;
@@ -965,52 +1462,19 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
   border: 1px solid rgba(37, 99, 235, 0.3);
   background: rgba(37, 99, 235, 0.06);
   border-radius: 999px;
-  padding: 3px 14px;
+  padding: 3px 12px;
 }
 .pd__stage-pill.sm {
   font-size: 12px;
   padding: 2px 10px;
 }
-
-/* 中部：临床焦点 */
-.pd__hero-clinical {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  justify-content: center;
-}
-.pd__clini-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.pd__clini-row--block {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
-.pd__clini-label {
-  font-size: 13px;
-  color: var(--pf-text-faint);
-  flex: none;
-  width: 84px;
-}
-.pd__clini-val {
-  font-size: 15px;
-  font-weight: 600;
-}
-.pd__clini-concl {
-  font-size: 14px;
-  color: var(--pf-text-soft);
-  line-height: 1.6;
-}
 .pd__status-pill {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
-  padding: 5px 16px;
+  padding: 4px 12px;
   border-radius: 999px;
   border: 1px solid;
 }
@@ -1024,89 +1488,6 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
   border-radius: 50%;
 }
 
-/* 右：指标 + 操作 */
-.pd__hero-metrics {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 18px;
-}
-.pd__metrics {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 18px;
-}
-.pd__metric {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.pd__metric strong {
-  font-size: 24px;
-  font-weight: 800;
-  color: #2563eb;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-}
-.pd__metric-sm {
-  font-size: 17px !important;
-}
-.pd__metric span {
-  font-size: 12px;
-  color: var(--pf-text-faint);
-}
-.pd__ops {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-/* ===================== 全局临床摘要 ===================== */
-.pd__summary {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1px;
-  margin-top: 14px;
-  background: var(--pf-border);
-  border: 1px solid var(--pf-border);
-  border-radius: 14px;
-  overflow: hidden;
-}
-.pd__sum-cell {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 18px;
-  background: #fff;
-}
-.pd__sum-dot {
-  width: 9px;
-  height: 9px;
-  flex: none;
-  border-radius: 50%;
-}
-.pd__sum-meta {
-  min-width: 0;
-}
-.pd__sum-k {
-  font-size: 12px;
-  color: var(--pf-text-faint);
-}
-.pd__sum-v {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--pf-text);
-  margin-top: 3px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pd__sum-sub {
-  font-size: 11px;
-  color: var(--pf-text-faint);
-  margin-top: 1px;
-}
-
 /* 提示条 */
 .pd__notice {
   display: flex;
@@ -1114,9 +1495,9 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
   gap: 8px;
   font-size: 13px;
   color: var(--pf-text-soft);
-  margin-top: 14px;
-  padding: 12px 16px;
-  border-radius: 12px;
+  margin-top: 10px;
+  padding: 8px 14px;
+  border-radius: 10px;
   background: rgba(37, 99, 235, 0.07);
   border: 1px solid rgba(37, 99, 235, 0.18);
 }
@@ -1138,19 +1519,126 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
   flex: none;
 }
 
+/* ===================== 检查报告弹窗 ===================== */
+:deep(.pd__exam-dialog) {
+  border-radius: 16px;
+}
+:deep(.pd__exam-dialog .el-dialog__header) {
+  margin-right: 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--pf-border);
+}
+:deep(.pd__exam-dialog .el-dialog__body) {
+  padding-top: 18px;
+}
+.pd__report-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.pd__report-meta > div {
+  padding: 11px 13px;
+  background: var(--pf-surface-2);
+  border: 1px solid var(--pf-border);
+  border-radius: 10px;
+}
+.pd__report-meta span {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 11px;
+  color: var(--pf-text-faint);
+}
+.pd__report-meta strong {
+  font-size: 13px;
+  color: var(--pf-text);
+}
+.pd__report-section + .pd__report-section {
+  margin-top: 18px;
+}
+.pd__report-section h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--pf-text);
+}
+.pd__report-section p {
+  margin: 0;
+  padding: 12px 14px;
+  line-height: 1.7;
+  color: var(--pf-text-soft);
+  background: var(--pf-surface-2);
+  border: 1px solid var(--pf-border);
+  border-radius: 10px;
+}
+.pd__report-compared {
+  margin-top: 8px;
+  padding: 9px 12px;
+  font-size: 12px;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: 8px;
+}
+.pd__report-compared span {
+  margin-right: 8px;
+  font-weight: 700;
+}
+.pd__report-image {
+  padding: 12px;
+  text-align: center;
+  background: #0f172a;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.pd__report-image :deep(.el-image) {
+  width: 100%;
+  max-height: 520px;
+}
+.pd__report-image :deep(.el-image__inner) {
+  max-height: 520px;
+}
+.pd__report-image-tip {
+  margin-top: 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+}
+.pd__pathology-image :deep(.el-image__inner) {
+  max-height: 560px;
+}
+.pd__report-empty {
+  padding: 26px;
+  text-align: center;
+  color: var(--pf-text-faint);
+  background: var(--pf-surface-2);
+  border: 1px dashed var(--pf-border);
+  border-radius: 10px;
+}
+.pd__report-note {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--pf-border);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--pf-text-faint);
+}
+
 /* ===================== 中部导航 ===================== */
+.pd__nav-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding-bottom: 14px;
+  background: var(--pf-page-bg, #f4f7fb);
+}
 .pd__nav {
   display: flex;
   gap: 6px;
-  margin: 0 0 16px;
+  margin: 0;
   padding: 6px;
   background: #fff;
   border: 1px solid var(--pf-border);
   border-radius: 14px;
   overflow-x: auto;
-  position: sticky;
-  top: 12px;
-  z-index: 5;
+  box-shadow: 0 8px 18px -16px rgba(15, 23, 42, 0.45);
 }
 .pd__nav-item {
   flex: none;
@@ -1212,6 +1700,24 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
 }
 .pd__detail {
   min-width: 0;
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 130px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  isolation: isolate;
+  background: var(--pf-page-bg, #f4f7fb);
+  overscroll-behavior: contain;
+}
+.pd__detail > :not(.pd__nav-sticky) {
+  position: relative;
+  z-index: 1;
+}
+
+/* 固定导航后，锚点定位预留导航高度 */
+.pd__detail [id^='rec-'],
+.pd__detail [id^='visit-'] {
+  scroll-margin-top: 78px;
 }
 
 /* 轻量信息组（替代重卡片） */
@@ -1252,82 +1758,80 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
   flex-wrap: wrap;
 }
 
-/* 就诊概览：就诊级卡片 */
-.pd__visit-count {
-  font-size: 13px;
-  color: var(--pf-text-faint);
-}
+/* 就诊记录 */
 .pd__visits {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 .pd__visit {
+  padding: 15px 16px;
   border: 1px solid var(--pf-border);
-  border-left-width: 3px;
   border-radius: 12px;
-  padding: 14px 18px;
-  background: #fff;
-  cursor: pointer;
-  transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
-}
-.pd__visit:hover {
-  box-shadow: 0 8px 22px -12px rgba(37, 99, 235, 0.4);
-  transform: translateY(-1px);
+  background: var(--pf-surface-2);
 }
 .pd__visit-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 11px;
+  border-bottom: 1px dashed var(--pf-border);
+}
+.pd__visit-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.pd__visit-title strong {
+  font-size: 14px;
+  color: var(--pf-text);
 }
 .pd__visit-type {
   font-size: 12px;
   font-weight: 700;
-  padding: 2px 12px;
+  padding: 2px 11px;
   border-radius: 999px;
 }
-.pd__visit-date {
-  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--pf-text);
-}
 .pd__visit-org {
-  font-size: 13px;
-  color: var(--pf-text-soft);
-  margin-left: auto;
+  flex: none;
+  font-size: 11px;
+  color: var(--pf-text-faint);
+  white-space: nowrap;
 }
 .pd__visit-body {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .pd__visit-row {
+  min-width: 0;
+  padding: 10px 0;
   display: grid;
-  grid-template-columns: 84px 1fr;
-  gap: 12px;
-  align-items: start;
+  grid-template-columns: 78px 1fr;
+  gap: 10px;
+  border-bottom: 1px dashed var(--pf-border);
+}
+.pd__visit-row:nth-child(odd):not(.pd__visit-row--wide) {
+  padding-right: 18px;
+}
+.pd__visit-row:nth-child(even):not(.pd__visit-row--wide) {
+  padding-left: 18px;
+  border-left: 1px dashed var(--pf-border);
+}
+.pd__visit-row--wide {
+  grid-column: 1 / -1;
 }
 .pd__visit-k {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--pf-text-faint);
-  flex: none;
-  padding-top: 1px;
 }
 .pd__visit-v {
-  font-size: 14px;
-  color: var(--pf-text);
-  line-height: 1.5;
-}
-.pd__visit-concl {
-  color: var(--pf-text-soft);
-}
-.pd__mono {
-  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
   font-size: 13px;
+  font-weight: 650;
+  line-height: 1.55;
+  color: var(--pf-text);
 }
+
 /* 主索引映射 */
 .pd__map {
   margin-top: 14px;
@@ -1417,14 +1921,10 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
 .pd__tl-card.is-recent {
   border-left-color: #06b6d4 !important;
 }
-/* 就诊节点：结构性标记（首诊 / 入院 / 转院），与其他事件级卡片区分 */
+/* 就诊节点与其他诊疗事件使用统一卡片底色，仅通过左侧色条和标签区分类别 */
 .pd__tl-card.is-encounter {
-  background: rgba(14, 165, 233, 0.07);
-  border-color: rgba(14, 165, 233, 0.35);
-  border-left-color: #0ea5e9 !important;
-}
-.pd__tl-card.is-encounter .pd__tl-desc {
-  color: var(--pf-text);
+  background: var(--pf-surface-2);
+  border-color: var(--pf-border);
 }
 /* 联动瞬时闪烁 */
 @keyframes pdFlash {
@@ -1437,138 +1937,106 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
 }
 
 
-/* 检查检验 */
-.pd__exams-top {
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 16px;
+/* ===================== 检查检验：四大模块 ===================== */
+.pd__labs .el-table {
+  border-radius: 12px;
+  overflow: hidden;
 }
-.pd__exams-chart :deep(.echarts),
-.pd__exams-chart :deep(canvas) {
-  min-height: 280px;
-}
-.pd__exams-list .pd__metric-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.pd__metric-item {
-  border: 1px solid var(--pf-border);
-  border-radius: 10px;
-  padding: 10px 12px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.pd__metric-item:hover {
-  border-color: rgba(37, 99, 235, 0.4);
-}
-.pd__metric-item.is-active {
-  border-color: #2563eb;
-  background: rgba(37, 99, 235, 0.04);
-}
-.pd__metric-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-.pd__metric-name {
-  font-size: 13px;
+.pd__lab-name {
+  font-size: 14px;
   font-weight: 600;
+  color: var(--pf-text);
 }
-.pd__metric-val {
-  font-size: 18px;
-  font-weight: 800;
+.pd__lab-cat {
+  font-size: 12px;
+  color: var(--pf-text-faint);
+  margin-top: 2px;
+}
+.pd__lab-val {
   font-variant-numeric: tabular-nums;
 }
-.pd__metric-val i {
-  font-size: 12px;
-  font-weight: 600;
-  font-style: normal;
-  margin-left: 2px;
-}
-.pd__spark {
-  height: 42px;
-  margin: 4px 0;
-}
-.pd__metric-ref {
-  font-size: 11px;
+.pd__muted {
   color: var(--pf-text-faint);
 }
-.pd__exams-bottom {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-top: 16px;
+.pd__status-chip {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid;
 }
-.pd__abn {
+/* 纵向检查记录卡 */
+.pd__exam-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px
 }
-.pd__abn-row {
+.pd__exam-card {
+  border: 1px solid var(--pf-border);
+  border-left-width: 3px;
+  border-radius: 12px;
+  padding: 14px 18px;
+  background: var(--pf-surface-2);
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.pd__exam-card:hover {
+  box-shadow: 0 8px 22px -12px rgba(37, 99, 235, 0.4);
+}
+.pd__exam-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
-  padding: 8px 10px;
-  background: rgba(244, 63, 94, 0.05);
-  border-radius: 8px;
+  flex-wrap: wrap;
 }
-.pd__abn-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #f43f5e;
-  flex: none;
-}
-.pd__abn-lab {
-  font-weight: 600;
-}
-.pd__abn-val {
-  color: #f43f5e;
+.pd__exam-type {
+  font-size: 12px;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  padding: 2px 12px;
+  border-radius: 999px;
+  border: 1px solid;
 }
-.pd__abn-date {
-  color: var(--pf-text-soft);
+.pd__exam-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--pf-text);
 }
-.pd__abn-ref {
-  margin-left: auto;
-  color: var(--pf-text-faint);
-  font-size: 12px;
-}
-.pd__recent {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.pd__recent-row {
-  display: flex;
-  gap: 12px;
-}
-.pd__recent-date {
-  font-size: 12px;
-  color: var(--pf-text-faint);
-  flex: none;
-  width: 84px;
-  padding-top: 2px;
-}
-.pd__recent-body {
-  flex: 1;
-  min-width: 0;
-}
-.pd__recent-title {
+.pd__exam-date {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
   font-size: 13px;
-  font-weight: 600;
-}
-.pd__recent-desc {
-  font-size: 12px;
   color: var(--pf-text-soft);
-  margin-top: 2px;
+  margin-left: auto;
 }
-
-/* 病理与分子：逻辑链 */
+.pd__exam-org {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--pf-text-soft);
+  margin-top: 8px;
+}
+.pd__exam-desc {
+  font-size: 13px;
+  color: var(--pf-text-soft);
+  line-height: 1.6;
+  margin-top: 8px;
+}
+.pd__exam-compared {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.pd__exam-cmp-label {
+  font-weight: 700;
+  margin-right: 6px;
+}
+.pd__exam-foot {
+  margin-top: 10px;
+}
+/* 诊断：逻辑链 */
 .pd__chain {
   display: flex;
   align-items: stretch;
@@ -1647,7 +2115,47 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
   font-size: 13px;
   color: var(--pf-text-faint);
 }
-/* 病理与分子：诊断卡片列表 */
+/* 诊断页 */
+.pd__diagnosis-summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: center;
+  padding: 15px 16px;
+  border: 1px solid var(--pf-border);
+  border-radius: 12px;
+  background: var(--pf-surface-2);
+}
+.pd__diagnosis-main,
+.pd__diagnosis-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.pd__diagnosis-label,
+.pd__diagnosis-stage span {
+  font-size: 12px;
+  color: var(--pf-text-faint);
+}
+.pd__diagnosis-main strong {
+  font-size: 15px;
+  color: var(--pf-text);
+}
+.pd__diagnosis-stage {
+  min-width: 150px;
+  padding-left: 18px;
+  border-left: 1px solid var(--pf-border);
+}
+.pd__diagnosis-stage strong {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 14px;
+  color: #7c3aed;
+}
+.pd__dx-list--mt {
+  margin-top: 12px;
+}
+
+/* 诊断：诊断卡片列表 */
 .pd__dx-list {
   display: flex;
   flex-direction: column;
@@ -1690,88 +2198,245 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
   color: var(--pf-text-faint);
   margin-top: 6px;
 }
-.pd__chain-mol-list {
+.pd__path-actions {
+  margin-top: 8px;
+}
+.pd__path-records,
+.pd__molecular-records {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
-.pd__chain-rep-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.pd__chain-arrow {
-  align-self: center;
-  font-size: 20px;
-  color: var(--pf-text-faint);
-  padding: 0 10px;
-  flex: none;
-}
-
-/* 治疗记录：连续流程 */
-.pd__txflow {
-  display: flex;
-  flex-direction: column;
-}
-.pd__txnode {
-  display: flex;
-  gap: 16px;
-}
-.pd__tx-rail {
-  position: relative;
-  width: 16px;
-  flex: none;
-  display: flex;
-  justify-content: center;
-}
-.pd__tx-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #2563eb;
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3);
-  margin-top: 18px;
-  z-index: 2;
-}
-.pd__txnode.is-doing .pd__tx-dot {
-  background: #06b6d4;
-  box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.35);
-}
-.pd__tx-line {
-  position: absolute;
-  top: 32px;
-  bottom: -2px;
-  width: 2px;
-  background: var(--pf-border);
-}
-.pd__tx-card {
-  flex: 1;
-  min-width: 0;
+.pd__path-record,
+.pd__molecular-record {
   border: 1px solid var(--pf-border);
   border-radius: 12px;
-  padding: 14px 18px 16px;
-  margin-bottom: 16px;
-  background: #fff;
+  padding: 15px 16px;
+  background: var(--pf-surface-2);
 }
-.pd__txnode.is-doing .pd__tx-card {
-  border-color: rgba(6, 182, 212, 0.4);
-  background: rgba(6, 182, 212, 0.03);
+.pd__path-record-head,
+.pd__molecular-record-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
 }
-.pd__tx-head {
+.pd__path-record-title,
+.pd__molecular-record-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--pf-text);
+}
+.pd__path-record-sub,
+.pd__molecular-record-sub,
+.pd__molecular-date {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--pf-text-faint);
+}
+.pd__detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px dashed var(--pf-border);
+}
+.pd__detail-item {
+  min-width: 0;
+  padding: 11px 0;
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  gap: 10px;
+  border-bottom: 1px dashed var(--pf-border);
+}
+.pd__detail-item:nth-child(odd):not(.pd__detail-item--wide) {
+  padding-right: 18px;
+}
+.pd__detail-item:nth-child(even):not(.pd__detail-item--wide) {
+  padding-left: 18px;
+  border-left: 1px dashed var(--pf-border);
+}
+.pd__detail-item--wide {
+  grid-column: 1 / -1;
+}
+.pd__detail-item > span {
+  font-size: 12px;
+  color: var(--pf-text-faint);
+}
+.pd__detail-item > strong {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.55;
+  color: var(--pf-text);
+}
+.pd__detail-grid--molecular .pd__detail-item:last-child {
+  border-bottom: 0;
+}
+.pd__molecular-value {
+  color: #7c3aed !important;
+  font-family: inherit;
+  font-size: 13px !important;
+  font-weight: 650;
+  line-height: 1.55;
+  letter-spacing: normal;
+}
+.pd__source-tip {
+  margin: -4px 0 10px;
+  font-size: 12px;
+  color: var(--pf-text-faint);
+}
+
+.pd__path-res-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pd__path-res {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 12px;
+  border: 1px solid var(--pf-border);
+  border-radius: 10px;
+  background: var(--pf-surface-2);
+}
+.pd__path-res-main,
+.pd__path-res-actions {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
 }
-.pd__tx-title {
+.pd__path-res-type {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: #7c3aed;
+  background: rgba(139, 92, 246, 0.08);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.pd__path-res-type.is-molecular {
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.08);
+}
+.pd__path-res-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pf-text);
+}
+.pd__path-res-meta {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--pf-text-faint);
+}
+
+/* 治疗记录 */
+.pd__tx-path {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  overflow-x: auto;
+}
+.pd__tx-path-item {
+  min-width: 210px;
+  flex: 1;
+  padding: 13px 14px;
+  border: 1px solid var(--pf-border);
+  border-radius: 12px;
+  background: var(--pf-surface-2);
+}
+.pd__tx-path-top {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
 }
-.pd__tx-name {
+.pd__tx-path-line {
+  font-size: 12px;
   font-weight: 700;
+  color: #2563eb;
+}
+.pd__tx-path-result {
+  font-size: 11px;
+  color: #10b981;
+}
+.pd__tx-path-item strong {
+  display: block;
+  font-size: 14px;
+  color: var(--pf-text);
+}
+.pd__tx-path-item > span {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--pf-text-faint);
+}
+.pd__tx-path-arrow {
+  flex: none;
+  align-self: center;
+  font-size: 18px;
+  color: var(--pf-text-faint);
+}
+.pd__tx-decision {
+  border: 1px solid var(--pf-border);
+  border-radius: 12px;
+  padding: 15px 16px;
+  background: var(--pf-surface-2);
+}
+.pd__tx-decision-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--pf-border);
+}
+.pd__tx-decision-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pd__tx-decision-head strong {
+  font-size: 14px;
+  color: var(--pf-text);
+}
+.pd__tx-decision-head span {
+  font-size: 11px;
+  color: var(--pf-text-faint);
+}
+.pd__tx-records {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pd__tx-record {
+  border: 1px solid var(--pf-border);
+  border-radius: 12px;
+  padding: 15px 16px;
+  background: var(--pf-surface-2);
+}
+.pd__tx-record.is-doing {
+  border-color: rgba(6, 182, 212, 0.4);
+  background: rgba(6, 182, 212, 0.03);
+}
+.pd__tx-record-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.pd__tx-record-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.pd__tx-record-title strong {
   font-size: 15px;
+  color: var(--pf-text);
 }
 .pd__tx-status {
   font-size: 12px;
@@ -1779,92 +2444,110 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
 }
 .pd__tx-status--doing {
   color: #06b6d4;
-  font-weight: 600;
+  font-weight: 700;
 }
-.pd__tx-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  margin-top: 10px;
-  font-size: 13px;
-  color: var(--pf-text-soft);
+.pd__tx-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.pd__tx-meta span {
-  background: var(--pf-bg-soft);
-  border-radius: 8px;
-  padding: 3px 10px;
+.pd__tx-detail-item {
+  min-width: 0;
+  padding: 10px 0;
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 10px;
+  border-bottom: 1px dashed var(--pf-border);
 }
-.pd__tx-next {
-  margin-top: 10px;
+.pd__tx-detail-item:nth-child(odd):not(.pd__tx-detail-item--wide) {
+  padding-right: 18px;
+}
+.pd__tx-detail-item:nth-child(even):not(.pd__tx-detail-item--wide) {
+  padding-left: 18px;
+  border-left: 1px dashed var(--pf-border);
+}
+.pd__tx-detail-item--wide {
+  grid-column: 1 / -1;
+}
+.pd__tx-detail-item span {
   font-size: 12px;
-  color: #2563eb;
+  color: var(--pf-text-faint);
+}
+.pd__tx-detail-item strong {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--pf-text);
+  line-height: 1.55;
 }
 
-/* 随访预后 */
-.pd__prog-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
-.pd__prog-cell {
-  background: var(--pf-bg-soft);
-  border-radius: 10px;
-  padding: 14px;
-}
-.pd__prog-k {
-  font-size: 12px;
-  color: var(--pf-text-faint);
-}
-.pd__prog-v {
-  font-size: 17px;
-  font-weight: 800;
-  margin-top: 6px;
-}
-.pd__fu-list {
+/* 疗效随访 */
+.pd__follow-records,
+.pd__eval-records,
+.pd__progression-records {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
-.pd__fu-row {
-  display: flex;
-  gap: 14px;
+.pd__follow-record,
+.pd__eval-record,
+.pd__progression-record {
+  padding: 15px 16px;
+  border: 1px solid var(--pf-border);
+  border-radius: 12px;
+  background: var(--pf-surface-2);
 }
-.pd__fu-date {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--pf-text);
-  flex: none;
-  width: 96px;
-  padding-top: 2px;
-}
-.pd__fu-body {
-  flex: 1;
-  min-width: 0;
-}
-.pd__fu-top {
+.pd__follow-head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 11px;
+  border-bottom: 1px dashed var(--pf-border);
+}
+.pd__follow-head > span {
+  flex: none;
+  font-size: 11px;
+  color: var(--pf-text-faint);
+}
+.pd__follow-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.pd__follow-title strong {
+  font-size: 14px;
+  color: var(--pf-text);
+}
+.pd__follow-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.pd__follow-item {
+  min-width: 0;
+  padding: 10px 0;
+  display: grid;
+  grid-template-columns: 78px 1fr;
   gap: 10px;
-  flex-wrap: wrap;
+  border-bottom: 1px dashed var(--pf-border);
 }
-.pd__fu-mod {
-  font-size: 13px;
-  color: var(--pf-text-soft);
+.pd__follow-item:nth-child(odd):not(.pd__follow-item--wide) {
+  padding-right: 18px;
 }
-.pd__fu-next {
-  font-size: 12px;
-  color: #2563eb;
+.pd__follow-item:nth-child(even):not(.pd__follow-item--wide) {
+  padding-left: 18px;
+  border-left: 1px dashed var(--pf-border);
 }
-.pd__fu-org {
+.pd__follow-item--wide {
+  grid-column: 1 / -1;
+}
+.pd__follow-item span {
   font-size: 12px;
   color: var(--pf-text-faint);
-  margin-left: auto;
 }
-.pd__fu-sum {
+.pd__follow-item strong {
   font-size: 13px;
-  color: var(--pf-text-soft);
-  margin-top: 4px;
-  line-height: 1.5;
+  font-weight: 650;
+  line-height: 1.55;
+  color: var(--pf-text);
 }
 
 /* 完整档案 */
@@ -1972,15 +2655,16 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
 /* 患者旅程：左侧固定诊疗时间轴 + 右栏顶部一级业务导航 + 右侧业务详情 */
 
 @media (max-width: 1180px) {
-  .pd__hero {
-    grid-template-columns: 1fr;
-  }
-  .pd__hero-col + .pd__hero-col {
-    border-left: none;
-    border-top: 1px solid var(--pf-border);
-  }
-  .pd__summary {
+  .pd__hero-info {
     grid-template-columns: repeat(2, 1fr);
+    row-gap: 16px;
+  }
+  .pd__info-item {
+    border-left: none;
+    padding: 0;
+  }
+  .pd__info-item--conclusion {
+    grid-column: 1 / -1;
   }
   .pd__main {
     grid-template-columns: 1fr;
@@ -1989,28 +2673,113 @@ const completeCount = computed(() => completeness.value.filter((c) => c.ok).leng
     position: static;
     max-height: none;
   }
-  .pd__exams-top {
-    grid-template-columns: 1fr;
-  }
-  .pd__exams-bottom {
-    grid-template-columns: 1fr;
-  }
   .pd__ress {
     grid-template-columns: 1fr;
   }
-  .pd__prog-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 @media (max-width: 640px) {
-  .pd__summary {
+  .pd__report-meta {
     grid-template-columns: 1fr;
   }
-  .pd__prog-grid {
+
+  .pd__visit-body {
     grid-template-columns: 1fr;
   }
-  .pd__chain-arrow {
+  .pd__visit-row,
+  .pd__visit-row:nth-child(odd):not(.pd__visit-row--wide),
+  .pd__visit-row:nth-child(even):not(.pd__visit-row--wide) {
+    grid-column: auto;
+    padding: 10px 0;
+    border-left: none;
+  }
+
+  .pd__follow-grid {
+    grid-template-columns: 1fr;
+  }
+  .pd__follow-item,
+  .pd__follow-item:nth-child(odd):not(.pd__follow-item--wide),
+  .pd__follow-item:nth-child(even):not(.pd__follow-item--wide) {
+    grid-column: auto;
+    padding: 10px 0;
+    border-left: none;
+  }
+
+  .pd__tx-path {
+    align-items: stretch;
+  }
+  .pd__tx-path-arrow {
+    display: none;
+  }
+  .pd__tx-path-item {
+    min-width: 230px;
+  }
+  .pd__tx-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .pd__tx-detail-item,
+  .pd__tx-detail-item:nth-child(odd):not(.pd__tx-detail-item--wide),
+  .pd__tx-detail-item:nth-child(even):not(.pd__tx-detail-item--wide) {
+    grid-column: auto;
+    padding: 10px 0;
+    border-left: none;
+  }
+
+  .pd__detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .pd__detail-item,
+  .pd__detail-item:nth-child(odd):not(.pd__detail-item--wide),
+  .pd__detail-item:nth-child(even):not(.pd__detail-item--wide) {
+    grid-column: auto;
+    padding: 10px 0;
+    border-left: none;
+  }
+
+  .pd__path-record-head,
+  .pd__molecular-record-head {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .pd__path-result,
+  .pd__molecular-result-row,
+  .pd__molecular-note-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .pd__path-detail,
+  .pd__path-actions {
+    padding-left: 0;
+  }
+  .pd__path-res {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .pd__path-res-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .pd__hero {
+    padding: 18px;
+  }
+  .pd__hero-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .pd__ops {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .pd__hero-info {
+    grid-template-columns: 1fr;
+  }
+  .pd__info-item--conclusion {
+    grid-column: auto;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+.pd__chain-arrow {
     display: none;
   }
 }
 </style>
+
