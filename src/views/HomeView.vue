@@ -10,7 +10,7 @@ import slide3 from '@/assets/carousel/slide3.jpg'
 import slide4 from '@/assets/carousel/slide4.jpg'
 
 import conceptBgImg from '@/assets/home/concept-bg.jpg'
-import capabilityBgImg from '@/assets/home/capability-bg.png'
+import capabilityBgImg from '@/assets/home/capability.jpg'
 
 const conceptBg = conceptBgImg
 const capabilityBg = capabilityBgImg

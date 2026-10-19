@@ -1,10 +1,18 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import PlaceholderView from '@/views/PlaceholderView.vue'
+import SimplePlaceholderView from '@/views/SimplePlaceholderView.vue'
 import { useAuthStore } from '@/store/auth'
+
+type Crumb = { title: string; to?: string }
 
 function ph(path: string, name: string, title: string, desc?: string): RouteRecordRaw {
   return { path, name, component: PlaceholderView, meta: { title, desc } }
+}
+
+/** 简洁占位页：仅标题 + 空状态，面包屑由 meta.breadcrumb 提供 */
+function sp(path: string, name: string, title: string, breadcrumb: Crumb[]): RouteRecordRaw {
+  return { path, name, component: SimplePlaceholderView, meta: { title, breadcrumb } }
 }
 
 const routes: RouteRecordRaw[] = [
@@ -42,9 +50,204 @@ const routes: RouteRecordRaw[] = [
     path: '/dataset/patients/:id',
     name: 'dataset-patient-detail',
     component: () => import('@/views/PatientDetailView.vue'),
-    meta: { title: '患者档案详情' },
+    meta: {
+      title: '患者档案详情',
+      breadcrumb: [
+        { title: '专病数据中心', to: '/overview' },
+        { title: '患者主档案', to: '/dataset/patients' },
+        { title: '患者详情' },
+      ],
+    },
   },
-  ph('/dataset/resources', 'dataset-resources', '多模态资源', '影像、病理切片、文本报告与基因测序等多模态数据的存储与预览。'),
+  {
+    path: '/dataset/patients/:id/info',
+    name: 'dataset-patient-info',
+    component: () => import('@/views/PatientInfoView.vue'),
+    meta: {
+      title: '患者详细信息',
+      breadcrumb: [
+        { title: '专病数据中心', to: '/overview' },
+        { title: '患者主档案', to: '/dataset/patients' },
+        { title: '患者详细信息' },
+      ],
+    },
+  },
+  {
+    path: '/dataset/patients/:id/labs',
+    name: 'dataset-patient-labs',
+    component: () => import('@/views/LabRecordView.vue'),
+    meta: {
+      title: '检验记录',
+      breadcrumb: [
+        { title: '专病数据中心', to: '/overview' },
+        { title: '患者主档案', to: '/dataset/patients' },
+        { title: '检验记录' },
+      ],
+    },
+  },
+  {
+    path: '/dataset/resources',
+    name: 'dataset-resources',
+    component: () => import('@/views/ResourceLibraryView.vue'),
+    meta: {
+      title: '多模态资源',
+      desc: '影像、病理切片、文本报告与基因测序等多模态数据的存储与预览。',
+      breadcrumb: [
+        { title: '专病数据中心', to: '/overview' },
+        { title: '多模态资源' },
+      ],
+    },
+  },
+  {
+    path: '/dataset/align/basic',
+    name: 'dataset-align-basic',
+    component: () => import('@/views/AlignmentBasicView.vue'),
+    meta: {
+      title: '基本信息对齐',
+      desc: '多中心患者基本信息（性别 / 出生日期 / 吸烟史 / 患者主索引）对齐：规则可查、冲突可控、过程可追溯。',
+      breadcrumb: [
+        { title: '专病数据中心', to: '/overview' },
+        { title: '基本信息对齐' },
+      ],
+    },
+  },
+  // —— 应用端新增入口（本期为占位页） ——
+  {
+    path: '/dataset/cohort',
+    name: 'dataset-cohort',
+    component: () => import('@/views/CohortView.vue'),
+    meta: {
+      title: '科研队列',
+      breadcrumb: [
+        { title: '专病数据中心', to: '/dataset/patients' },
+        { title: '科研队列' },
+      ],
+    },
+  },
+  {
+    path: '/dataset/research-datasets',
+    name: 'dataset-research-datasets',
+    component: () => import('@/views/DatasetListView.vue'),
+    meta: {
+      title: '科研数据集',
+      breadcrumb: [
+        { title: '专病数据中心', to: '/dataset/patients' },
+        { title: '科研数据集' },
+      ],
+    },
+  },
+  {
+    path: '/dataset/research-datasets/new',
+    name: 'dataset-new',
+    component: () => import('@/views/DatasetWizardView.vue'),
+    meta: {
+      title: '新建数据集',
+      breadcrumb: [
+        { title: '专病数据中心', to: '/dataset/patients' },
+        { title: '科研数据集', to: '/dataset/research-datasets' },
+        { title: '新建数据集' },
+      ],
+    },
+  },
+  {
+    path: '/dataset/research-datasets/:id',
+    name: 'dataset-detail',
+    component: () => import('@/views/DatasetDetailView.vue'),
+    meta: {
+      title: '数据集详情',
+      breadcrumb: [
+        { title: '专病数据中心', to: '/dataset/patients' },
+        { title: '科研数据集', to: '/dataset/research-datasets' },
+        { title: '数据集详情' },
+      ],
+    },
+  },
+  {
+    path: '/dataset/research-datasets/:id/edit',
+    name: 'dataset-edit',
+    component: () => import('@/views/DatasetWizardView.vue'),
+    meta: {
+      title: '编辑数据集',
+      breadcrumb: [
+        { title: '专病数据中心', to: '/dataset/patients' },
+        { title: '科研数据集', to: '/dataset/research-datasets' },
+        { title: '编辑数据集' },
+      ],
+    },
+  },
+  {
+    path: '/federated',
+    name: 'federated-center',
+    component: () => import('@/views/FederatedListView.vue'),
+    meta: { title: '联邦任务中心', breadcrumb: [{ title: '联邦任务中心' }] },
+  },
+  {
+    path: '/federated/:id',
+    name: 'federated-detail',
+    component: () => import('@/views/FederatedDetailView.vue'),
+    meta: {
+      title: '任务详情',
+      breadcrumb: [
+        { title: '联邦任务中心', to: '/federated' },
+        { title: '任务详情' },
+      ],
+    },
+  },
+  sp('/results', 'results-center', '结果中心', [{ title: '结果中心' }]),
+
+  // —— 管理后台（本期全部为占位页） ——
+  sp('/admin/overview', 'admin-overview', '平台总览', [{ title: '平台总览' }]),
+  {
+    path: '/admin/data',
+    name: 'admin-data',
+    component: () => import('@/views/DataManagementView.vue'),
+    meta: { title: '数据管理', breadcrumb: [{ title: '数据管理' }] },
+  },
+  {
+    path: '/admin/organization',
+    name: 'admin-organization',
+    component: () => import('@/views/InstitutionEntryView.vue'),
+    meta: { title: '机构管理', breadcrumb: [{ title: '机构管理' }] },
+  },
+  {
+    path: '/admin/organization/:org',
+    name: 'admin-organization-detail',
+    component: () => import('@/views/InstitutionDetailView.vue'),
+    meta: {
+      title: '机构详情',
+      breadcrumb: [
+        { title: '机构管理', to: '/admin/organization' },
+        { title: '机构详情' },
+      ],
+    },
+  },
+  {
+    path: '/admin/approval',
+    name: 'admin-approval',
+    component: () => import('@/views/ApprovalListView.vue'),
+    meta: { title: '审批管理', breadcrumb: [{ title: '审批管理' }] },
+  },
+  {
+    path: '/admin/approval/:id',
+    name: 'admin-approval-detail',
+    component: () => import('@/views/ApprovalDetailView.vue'),
+    meta: {
+      title: '审批详情',
+      breadcrumb: [
+        { title: '审批管理', to: '/admin/approval' },
+        { title: '审批详情' },
+      ],
+    },
+  },
+  sp('/admin/system/users', 'admin-system-users', '用户权限', [
+    { title: '系统管理', to: '/admin/system/users' },
+    { title: '用户权限' },
+  ]),
+  sp('/admin/system/audit', 'admin-system-audit', '审计日志', [
+    { title: '系统管理', to: '/admin/system/users' },
+    { title: '审计日志' },
+  ]),
+
   ph('/dataset/retrieval', 'dataset-retrieval', '专病检索', '按条件组合检索患者队列，构建可复用的研究 Cohort（仅返回聚合统计）。'),
   ph('/dataset/datasets', 'dataset-datasets', '数据集', '可用于联邦学习的本地数据集，仅展示元数据与统计摘要（不出域）。'),
 
@@ -56,8 +259,18 @@ const routes: RouteRecordRaw[] = [
 
   // 联邦任务管理
   ph('/federated/list', 'federated-list', '任务列表', '联邦学习任务的创建、状态、进度与参与方总览。'),
-  ph('/federated/create', 'federated-create', '新建任务', '向导式创建联邦任务：选择算法、参与方、超参与隐私参数。'),
-  ph('/federated/:id', 'federated-detail', '训练看板', '联邦任务的实时训练监控：轮次进度、损失曲线与各方贡献。'),
+  {
+    path: '/federated/create',
+    name: 'federated-create',
+    component: () => import('@/views/FederatedTaskCreateView.vue'),
+    meta: {
+      title: '新建任务',
+      breadcrumb: [
+        { title: '联邦任务中心', to: '/federated' },
+        { title: '新建任务' },
+      ],
+    },
+  },
   ph('/federated/:id/eval', 'federated-eval', '模型评估', '联邦模型的 AUC、准确率、混淆矩阵与跨中心泛化对比。'),
 
   // 联合统计看板（先占位，待定具体应用场景）
@@ -118,6 +331,14 @@ router.beforeEach((to) => {
   }
   if (to.name === 'login' && auth.isAuthenticated) {
     return { name: 'home' }
+  }
+  // 管理端访问控制（基础占位：仅校验角色所属端，完整 RBAC 后续实现）
+  if (to.path.startsWith('/admin') && !auth.canAccessAdmin) {
+    return { path: '/' }
+  }
+  // 管理角色首次进入时落到管理端；手动切回应用端后不再强制跳转
+  if (to.path === '/' && auth.currentSide === 'admin') {
+    return { path: '/admin/overview' }
   }
   return true
 })
