@@ -1,0 +1,186 @@
+﻿patient_id,age,gender,race,ethnicity,vital_status,days_to_death,days_to_last_follow_up,primary_diagnosis,age_at_diagnosis,ajcc_stage,ajcc_t,ajcc_n,ajcc_m,tumor_grade,morphology,tissue_or_organ_of_origin
+TCGA-L5-A43M,84.3,,not reported,not reported,Alive,,,Not Reported,29382.0,,,,,,Not Reported,"Colon, NOS"
+TCGA-IC-A6RF,69.6,,white,not hispanic or latino,Alive,,,Not Reported,24330.0,,T1c,N0 (mol+),M0,,Not Reported,"Breast, NOS"
+TCGA-L5-A88T,86.2,,white,not reported,Alive,,,"Adenocarcinoma, NOS",30560.0,,,,,,8140/3,Prostate gland
+TCGA-L5-A8NN,81.8,,white,not reported,Alive,,167.0,"Adenocarcinoma, NOS",29891.0,Stage III,T3,N1,M0,GX,8140/3,Lower third of esophagus
+TCGA-JY-A6FB,77.4,,white,Unknown,Alive,,,"Adenocarcinoma, NOS",24259.0,,,,,,8140/3,Prostate gland
+TCGA-R6-A6Y2,71.0,,white,hispanic or latino,Dead,283.0,,"Adenocarcinoma, NOS",26042.0,,,,,,8140/3,"Bone, NOS"
+TCGA-LN-A4A6,65.7,,asian,not hispanic or latino,Alive,,,"Squamous cell carcinoma, NOS",24169.0,,,,,,8070/3,Not Reported
+TCGA-Z6-A8JD,53.5,,white,not hispanic or latino,Alive,,104.0,"Squamous cell carcinoma, NOS",19523.0,Stage IIB,T3,N0,M0,G2,8070/3,"Esophagus, NOS"
+TCGA-VR-A8ER,54.6,,Unknown,not reported,Dead,378.0,,"Squamous cell carcinoma, NOS",19951.0,Stage III,T4,N1,M0,GX,8070/3,Lower third of esophagus
+TCGA-JY-A93C,47.2,,asian,Unknown,Alive,,705.0,"Adenocarcinoma, NOS",17228.0,Stage IIIB,T3,N2,M0,G3,8140/3,Lower third of esophagus
+TCGA-IG-A7DP,50.3,,white,not hispanic or latino,Alive,,452.0,"Adenocarcinoma, NOS",18364.0,Stage IIIA,T4a,NX,MX,G2,8140/3,Lower third of esophagus
+TCGA-IG-A4QS,71.9,,white,not hispanic or latino,Dead,118.0,118.0,"Adenocarcinoma, NOS",26273.0,Stage IIIB,T3,N2,M0,G3,8140/3,Thoracic esophagus
+TCGA-VR-AA7D,58.8,,Unknown,not reported,Dead,279.0,,"Squamous cell carcinoma, NOS",21712.0,,,,,,8070/3,"Lymph nodes of head, face and neck"
+TCGA-LN-A4A2,57.8,,asian,not hispanic or latino,Alive,,380.0,"Squamous cell carcinoma, NOS",21122.0,Stage IIA,T3,N0,M0,G1,8070/3,Middle third of esophagus
+TCGA-2H-A9GF,67.0,,Unknown,Unknown,Dead,784.0,,"Adenocarcinoma, NOS",24659.0,,,,,,8140/3,"Brain, NOS"
+TCGA-VR-AA4D,54.0,,white,not reported,Dead,1405.0,,"Adenocarcinoma, NOS",20546.0,,,,,,8140/3,"Lung, NOS"
+TCGA-L5-A8NM,84.7,,white,not reported,Dead,236.0,,"Adenocarcinoma, NOS",30936.0,Stage IIB,T2,N1,M0,GX,8140/3,Lower third of esophagus
+TCGA-XP-A8T7,64.0,,white,hispanic or latino,Alive,,1254.0,"Squamous cell carcinoma, NOS",23375.0,Stage IIA,T2,N0,M0,G2,8070/3,Middle third of esophagus
+TCGA-V5-A7RE,45.6,,white,not hispanic or latino,Alive,,,"Adenocarcinoma, NOS",16937.0,,,,,,8140/3,"Bone, NOS"
+TCGA-LN-A49W,73.7,,asian,not reported,Alive,,403.0,"Squamous cell carcinoma, NOS",26910.0,Stage III,T3,N1,M0,G3,8070/3,Middle third of esophagus
+TCGA-LN-A7HZ,49.1,,asian,not hispanic or latino,Alive,,,"Squamous cell carcinoma, NOS",18048.0,,,,,,8070/3,Not Reported
+TCGA-LN-A5U5,57.5,,asian,not hispanic or latino,Dead,136.0,136.0,"Squamous cell carcinoma, NOS",20993.0,Stage IV,T3,N1,M1,G2,8070/3,Lower third of esophagus
+TCGA-LN-A49Y,77.0,,asian,not hispanic or latino,Alive,,,"Squamous cell carcinoma, NOS",28215.0,,,,,,8070/3,Not Reported
+TCGA-L5-A8NG,77.3,,white,not reported,Alive,,1094.0,"Adenocarcinoma, NOS",28219.0,Stage III,T3,N1,M0,GX,8140/3,Lower third of esophagus
+TCGA-VR-A8EO,49.6,,white,not reported,Alive,,785.0,"Squamous cell carcinoma, NOS",18123.0,Stage IIA,T3,N0,M0,G3,8070/3,Lower third of esophagus
+TCGA-L5-A8NQ,71.9,,white,not reported,Dead,650.0,,"Squamous cell carcinoma, NOS",26250.0,Stage IIA,T2,N0,M0,G3,8070/3,Middle third of esophagus
+TCGA-IG-A5B8,72.8,,white,not hispanic or latino,Dead,24.0,,"Squamous cell carcinoma, keratinizing, NOS",26574.0,Stage IB,T3,N0,M0,G1,8071/3,"Esophagus, NOS"
+TCGA-LN-A5U6,54.3,,asian,not hispanic or latino,Alive,,375.0,"Squamous cell carcinoma, NOS",19840.0,Stage IIB,T2,N1,M0,G2,8070/3,Lower third of esophagus
+TCGA-R6-A6DN,58.2,,white,not hispanic or latino,Dead,243.0,,"Adenocarcinoma, NOS",21458.0,,,,,,8140/3,"Brain, NOS"
+TCGA-IG-A4QT,56.1,,white,not hispanic or latino,Dead,283.0,283.0,"Squamous cell carcinoma, keratinizing, NOS",20506.0,Stage IIA,T3,N0,M0,G2,8071/3,Thoracic esophagus
+TCGA-LN-A49L,44.3,,asian,not hispanic or latino,Dead,318.0,318.0,"Squamous cell carcinoma, NOS",16164.0,Stage IIA,T2,N0,M0,G2,8070/3,Middle third of esophagus
+TCGA-JY-A93D,51.5,,white,Unknown,Dead,960.0,960.0,"Adenocarcinoma, NOS",18813.0,Stage IIIC,T2,N3,M0,G3,8140/3,Lower third of esophagus
+TCGA-L5-A4OX,60.3,,white,not reported,Dead,226.0,226.0,"Adenocarcinoma, NOS",22015.0,Stage IIB,T2,N1,M0,GX,8140/3,Lower third of esophagus
+TCGA-Z6-AAPN,57.3,,white,not hispanic or latino,Alive,,81.0,"Squamous cell carcinoma, NOS",20926.0,Stage IIA,T3,N0,M0,G1,8070/3,Lower third of esophagus
+TCGA-2H-A9GR,80.6,,Unknown,Unknown,Dead,987.0,,"Adenocarcinoma, NOS",29451.0,Stage IIA,T3,N0,M0,G2,8140/3,Lower third of esophagus
+TCGA-LN-A7HW,59.8,,asian,not hispanic or latino,Alive,,,"Squamous cell carcinoma, NOS",21937.0,,,,,,8070/3,Not Reported
+TCGA-M9-A5M8,58.7,,not reported,not reported,Alive,,1007.0,"Adenocarcinoma, NOS",21433.0,Stage IIA,T3,N0,M0,G2,8140/3,Lower third of esophagus
+TCGA-LN-A49O,47.2,,asian,not hispanic or latino,Alive,,408.0,"Squamous cell carcinoma, NOS",17237.0,Stage IIA,T3,N0,M0,G3,8070/3,Middle third of esophagus
+TCGA-V5-AASX,74.1,,white,not hispanic or latino,Alive,,273.0,"Adenocarcinoma, NOS",27081.0,,,,,G2,8140/3,Lower third of esophagus
+TCGA-IG-A3YA,53.6,,white,not hispanic or latino,Alive,,632.0,"Squamous cell carcinoma, NOS",19567.0,Stage IIIA,T4,N0,M0,G2,8070/3,Lower third of esophagus
+TCGA-IG-A6QS,54.5,,white,not hispanic or latino,Dead,303.0,303.0,"Squamous cell carcinoma, keratinizing, NOS",19900.0,Stage IIB,T2,N1,M0,G1,8071/3,Lower third of esophagus
+TCGA-L5-A88Y,76.8,,white,not reported,Alive,,,"Basal cell carcinoma, NOS",26658.0,,,,,,8090/3,"Skin, NOS"
+TCGA-LN-A9FP,60.5,,asian,not hispanic or latino,Alive,,366.0,"Squamous cell carcinoma, NOS",22104.0,Stage IIA,T2,N0,M0,G3,8070/3,Middle third of esophagus
+TCGA-V5-AASV,67.2,,black or african american,not hispanic or latino,Alive,,,"Squamous cell carcinoma, NOS",24881.0,,,,,,8070/3,"Lung, NOS"
+TCGA-R6-A8W5,60.0,,white,not hispanic or latino,Dead,480.0,,"Adenocarcinoma, NOS",22253.0,,,,,,8140/3,Liver
+TCGA-2H-A9GK,44.0,,Unknown,Unknown,Dead,232.0,,"Adenocarcinoma, NOS",16067.0,Stage III,T3,N1,M0,G3,8140/3,Lower third of esophagus
+TCGA-L5-A4OF,63.5,,white,not reported,Dead,801.0,801.0,"Adenocarcinoma, NOS",23194.0,Stage IIB,T1,N1,Unknown,G3,8140/3,Lower third of esophagus
+TCGA-L5-A88W,67.7,,white,not reported,Dead,764.0,,"Squamous cell carcinoma, NOS",25031.0,,,,,,8070/3,Liver
+TCGA-L5-A8NI,79.8,,white,not reported,Dead,410.0,,"Adenocarcinoma, NOS",29135.0,Stage III,T3,N1,M0,G3,8140/3,Lower third of esophagus
+TCGA-JY-A93E,61.4,,white,Unknown,Alive,,767.0,"Adenocarcinoma, NOS",22427.0,Stage IIIA,T3,N1,M0,G3,8140/3,Lower third of esophagus
+TCGA-LN-A4MQ,46.5,,asian,not hispanic or latino,Alive,,375.0,"Squamous cell carcinoma, NOS",16990.0,Stage III,T3,N1,M0,G3,8070/3,Lower third of esophagus
+TCGA-LN-A4A8,52.1,,asian,not hispanic or latino,Alive,,,"Squamous cell carcinoma, NOS",19296.0,,,,,,8070/3,Not Reported
+TCGA-IG-A51D,63.7,,white,not hispanic or latino,Alive,,518.0,"Squamous cell carcinoma, NOS",23259.0,Stage IIB,T1,N1,M0,G2,8070/3,Upper third of esophagus
+TCGA-Q9-A6FU,57.8,,white,not hispanic or latino,Dead,157.0,,"Squamous cell carcinoma, NOS",21207.0,,,,,,8070/3,Liver
+TCGA-JY-A6FE,49.6,,white,Unknown,Dead,112.0,,"Squamous cell carcinoma, NOS",18160.0,,,,,,8070/3,"Pleura, NOS"
+TCGA-LN-A5U7,46.3,,asian,not hispanic or latino,Alive,,768.0,"Squamous cell carcinoma, NOS",16928.0,Stage IIA,T2,N0,M0,G1,8070/3,Middle third of esophagus
+TCGA-LN-A8I0,52.9,,asian,not hispanic or latino,Alive,,407.0,"Squamous cell carcinoma, NOS",19328.0,Stage IIA,T2,N0,M0,G2,8070/3,Lower third of esophagus
+TCGA-R6-A6DQ,74.2,,white,not hispanic or latino,Dead,231.0,,"Adenocarcinoma, NOS",27098.0,,,,,G3,8140/3,Lower third of esophagus
+TCGA-LN-A8I1,67.2,,asian,not hispanic or latino,Alive,,401.0,"Squamous cell carcinoma, NOS",24551.0,Stage IIA,T2,N0,M0,G3,8070/3,"Esophagus, NOS"
+TCGA-L5-A4OW,56.9,,not reported,not reported,Dead,217.0,217.0,"Adenocarcinoma, NOS",20796.0,Stage IIB,T2,N1,M0,GX,8140/3,Lower third of esophagus
+TCGA-IG-A3QL,54.1,,white,not hispanic or latino,Alive,,1071.0,"Squamous cell carcinoma, keratinizing, NOS",19755.0,Stage IIA,T2,N0,M0,G2,8071/3,Lower third of esophagus
+TCGA-L5-A8NJ,77.2,,white,not reported,Alive,,,"Adenocarcinoma, NOS",28596.0,,,,,,8140/3,"Lung, NOS"
+TCGA-L5-A4OI,79.9,,white,not reported,Alive,,608.0,"Adenocarcinoma, NOS",29190.0,Stage IIIC,T3,N3,MX,G2,8140/3,Lower third of esophagus
+TCGA-S8-A6BV,77.0,,white,not hispanic or latino,Alive,,,"Adenocarcinoma, NOS",28111.0,,,,,,8140/3,"Pancreas, NOS"
+TCGA-IG-A3YC,62.4,,white,not hispanic or latino,Alive,,,Not Reported,23316.0,,,,,,Not Reported,"Lung, NOS"
+TCGA-Q9-A6FW,61.8,,white,not hispanic or latino,Alive,,238.0,"Adenocarcinoma, NOS",22586.0,Stage IIIB,T3,N2,M0,G2,8140/3,Lower third of esophagus
+TCGA-L5-A8NF,57.9,,white,not reported,Dead,81.0,,"Adenocarcinoma, NOS",21134.0,Stage IVA,T1,N0,M1a,GX,8140/3,Lower third of esophagus
+TCGA-2H-A9GL,74.2,,Unknown,Unknown,Dead,180.0,,"Adenocarcinoma, NOS",27224.0,,,,,,8140/3,Not Reported
+TCGA-LN-A49K,66.7,,asian,not hispanic or latino,Dead,180.0,180.0,"Squamous cell carcinoma, NOS",24379.0,Stage IIA,T3,N0,M0,G2,8070/3,Middle third of esophagus
+TCGA-VR-AA7B,65.5,,white,not reported,Alive,,,"Squamous cell carcinoma, NOS",24122.0,,,,,,8070/3,"Brain, NOS"
+TCGA-R6-A6L6,68.7,,white,not hispanic or latino,Dead,214.0,,"Adenocarcinoma, NOS",25092.0,,,,,G3,8140/3,Lower third of esophagus
+TCGA-IG-A5S3,69.6,,white,not hispanic or latino,Alive,,712.0,"Squamous cell carcinoma, NOS",25414.0,Stage IIB,T3,N0,M0,G2,8070/3,"Esophagus, NOS"
+TCGA-LN-A9FQ,62.2,,asian,not hispanic or latino,Alive,,391.0,"Squamous cell carcinoma, NOS",22717.0,Stage IIA,T3,N0,M0,G3,8070/3,Middle third of esophagus
+TCGA-JY-A6FD,51.5,,asian,Unknown,Alive,,2069.0,"Squamous cell carcinoma, NOS",18808.0,Stage IIA,T3,N0,M0,G1,8070/3,Lower third of esophagus
+TCGA-L5-A43H,75.5,,white,not reported,Dead,9.0,9.0,"Squamous cell carcinoma, NOS",27592.0,Stage III,T3,N1,M0,GX,8070/3,Middle third of esophagus
+TCGA-2H-A9GN,70.3,,Unknown,Unknown,Dead,272.0,,"Adenocarcinoma, NOS",25906.0,,,,,,8140/3,"Brain, NOS"
+TCGA-L5-A4OR,83.3,,white,not reported,Dead,96.0,96.0,"Adenocarcinoma, NOS",30417.0,Stage IA,T1,N0,MX,GX,8140/3,Lower third of esophagus
+TCGA-L5-A4OE,81.0,,white,not reported,Dead,730.0,730.0,"Adenocarcinoma, NOS",29591.0,Stage IIIB,T3,N2,Unknown,G2,8140/3,Lower third of esophagus
+TCGA-LN-A49V,49.1,,asian,not hispanic or latino,Alive,,383.0,"Squamous cell carcinoma, NOS",17922.0,Stage IIA,T3,N0,M0,G3,8070/3,Middle third of esophagus
+TCGA-VR-A8EX,63.6,,Unknown,not reported,Dead,855.0,,"Squamous cell carcinoma, NOS",23226.0,Stage IVA,T1,N1,M1a,G2,8070/3,Middle third of esophagus
+TCGA-JY-A939,77.2,,white,Unknown,Alive,,660.0,"Adenocarcinoma, NOS",28181.0,Stage IIB,T1,N1,M0,G3,8140/3,Lower third of esophagus
+TCGA-Z6-A8JE,57.1,,white,not hispanic or latino,Alive,,64.0,"Squamous cell carcinoma, NOS",20855.0,Stage IIIA,T3,N1,M0,G3,8070/3,Upper third of esophagus
+TCGA-L5-A4OM,54.3,,white,not reported,Dead,1458.0,1458.0,Basaloid squamous cell carcinoma,19845.0,Stage IA,T1,N0,Unknown,GX,8083/3,Lower third of esophagus
+TCGA-Z6-A9VB,53.3,,white,not hispanic or latino,Alive,,40.0,"Squamous cell carcinoma, NOS",19470.0,Stage IIIA,T3,N1,M0,G2,8070/3,Lower third of esophagus
+TCGA-L5-A43J,90.0,,white,not reported,Dead,0.0,,"Malignant lymphoma, non-Hodgkin, NOS",31238.0,,,,,,9591/3,Unknown
+TCGA-L5-A43I,77.7,,white,not reported,Dead,556.0,,Multiple myeloma,,,,,,,9732/3,Blood
+TCGA-L5-A88S,84.7,,white,not reported,Alive,,471.0,"Squamous cell carcinoma, NOS",30954.0,Stage IB,T3,N0,MX,GX,8070/3,Lower third of esophagus
+TCGA-VR-A8Q7,60.6,,white,not reported,Alive,,1590.0,"Squamous cell carcinoma, NOS",22149.0,Stage IIIA,T3,N1,M0,G3,8070/3,Lower third of esophagus
+TCGA-LN-A7HV,58.8,,asian,not hispanic or latino,Alive,,320.0,"Squamous cell carcinoma, NOS",21462.0,Stage IIA,T2,N0,M0,G1,8070/3,Middle third of esophagus
+TCGA-L5-A8NS,76.1,,white,not reported,Alive,,408.0,"Adenocarcinoma, NOS",27800.0,Stage IIB,T3,N0,M0,GX,8140/3,Lower third of esophagus
+TCGA-JY-A6FA,52.0,,asian,Unknown,Dead,1361.0,,"Squamous cell carcinoma, NOS",19455.0,,,,,,8070/3,"Lung, NOS"
+TCGA-LN-A4A3,61.1,,asian,not hispanic or latino,Alive,,388.0,"Squamous cell carcinoma, NOS",22313.0,Stage III,T3,N1,M0,G2,8070/3,Middle third of esophagus
+TCGA-LN-A4A1,60.1,,asian,not hispanic or latino,Alive,,,"Squamous cell carcinoma, NOS",22159.0,,,,,,8070/3,Not Reported
+TCGA-R6-A6XG,64.3,,white,not hispanic or latino,Alive,,,"Adenocarcinoma, NOS",24265.0,,,,,,8140/3,"Brain, NOS"
+TCGA-L5-A4OH,71.7,,white,not reported,Alive,,992.0,"Adenocarcinoma, NOS",26180.0,Stage I,T1,N0,M0,GX,8140/3,Lower third of esophagus
+TCGA-VR-A8EQ,73.7,,white,not reported,Dead,694.0,,Tubular adenocarcinoma,26912.0,Stage III,T3,N1,M0,G2,8211/3,Lower third of esophagus
+TCGA-IG-A3Y9,72.1,,white,not hispanic or latino,Dead,26.0,26.0,"Squamous cell carcinoma, NOS",26330.0,Stage IIIA,T4,N0,M0,G2,8070/3,"Esophagus, NOS"
+TCGA-LN-A49R,46.8,,asian,not hispanic or latino,Alive,,407.0,"Squamous cell carcinoma, NOS",17109.0,Stage III,T3,N1,M0,G3,8070/3,Lower third of esophagus
+TCGA-L5-A88Z,70.9,,white,not reported,Alive,,225.0,"Squamous cell carcinoma, NOS",25890.0,Stage IIA,T1,N1,M0,GX,8070/3,Middle third of esophagus
+TCGA-LN-A4A5,49.7,,asian,not hispanic or latino,Dead,681.0,681.0,"Squamous cell carcinoma, NOS",18160.0,Stage IIA,T2,N0,M0,G2,8070/3,Middle third of esophagus
+TCGA-L5-A8NK,84.1,,white,not reported,Alive,,,"Squamous cell carcinoma, NOS",31044.0,,,,,,8070/3,Not Reported
+TCGA-JY-A6FG,50.2,,white,Unknown,Dead,1263.0,,"Squamous cell carcinoma, NOS",18348.0,Stage III,T3,N1,M0,G2,8070/3,"Cardia, NOS"
+TCGA-L5-A4OO,76.0,,white,not reported,Alive,,101.0,"Adenocarcinoma, NOS",27757.0,Stage IIIC,T3,N3,M0,G2,8140/3,Lower third of esophagus
+TCGA-L5-A4OQ,75.5,,white,not reported,Dead,42.0,,"Adenocarcinoma, NOS",27565.0,Stage IIIA,T2,N2,MX,GX,8140/3,Lower third of esophagus
+TCGA-L5-A8NH,54.7,,white,not reported,Dead,393.0,,"Adenocarcinoma, NOS",19991.0,Stage IV,T1,N0,M1,GX,8140/3,Lower third of esophagus
+TCGA-IG-A625,60.4,,asian,not hispanic or latino,Dead,390.0,390.0,"Squamous cell carcinoma, NOS",22070.0,Stage IIIB,T3,N2,M0,G2,8070/3,Lower third of esophagus
+TCGA-IG-A97H,36.0,,asian,not hispanic or latino,Alive,,441.0,"Squamous cell carcinoma, NOS",13166.0,Stage IIA,T3,NX,M0,G3,8070/3,Lower third of esophagus
+TCGA-2H-A9GH,44.3,,Unknown,Unknown,Dead,951.0,,"Adenocarcinoma, NOS",16997.0,,,,,,8140/3,"Lung, NOS"
+TCGA-R6-A8WG,60.5,,white,hispanic or latino,Dead,386.0,,"Adenocarcinoma, NOS",22200.0,,,,,,8140/3,Intrathoracic lymph nodes
+TCGA-IC-A6RE,59.2,,white,not hispanic or latino,Alive,,234.0,"Adenocarcinoma, NOS",21640.0,Stage IIB,T1,N1,M0,G2,8140/3,Lower third of esophagus
+TCGA-2H-A9GM,53.3,,Unknown,Unknown,Dead,424.0,,"Adenocarcinoma, NOS",19484.0,Stage IIB,T1,N1,M0,G2,8140/3,Lower third of esophagus
+TCGA-IG-A4P3,48.9,,white,not hispanic or latino,Dead,567.0,567.0,"Squamous cell carcinoma, NOS",17860.0,Stage IIB,T2,N1,M0,G2,8070/3,Middle third of esophagus
+TCGA-S8-A6BW,51.9,,white,not hispanic or latino,Alive,,620.0,"Squamous cell carcinoma, NOS",18944.0,Stage IB,T2,N0,MX,G1,8070/3,"Esophagus, NOS"
+TCGA-L5-A8NT,69.2,,white,not reported,Alive,,,"Adenocarcinoma, NOS",22276.0,,,,,,8140/3,Prostate gland
+TCGA-L5-A8NE,77.3,,white,not reported,Alive,,1688.0,"Adenocarcinoma, NOS",28243.0,Stage IIB,T2,N1,M0,GX,8140/3,Lower third of esophagus
+TCGA-L5-A43E,74.3,,white,not reported,Alive,,920.0,"Adenocarcinoma, NOS",27143.0,Stage I,T1,N0,M0,GX,8140/3,Lower third of esophagus
+TCGA-2H-A9GG,66.6,,Unknown,Unknown,Dead,610.0,,"Adenocarcinoma, NOS",24832.0,,,,,,8140/3,"Brain, NOS"
+TCGA-L7-A56G,66.0,,black or african american,not hispanic or latino,Dead,330.0,,"Squamous cell carcinoma, NOS",24376.0,,,,,,8070/3,"Lung, NOS"
+TCGA-VR-A8EW,57.2,,asian,not reported,Dead,247.0,,"Squamous cell carcinoma, NOS",20902.0,Stage IIIB,T3,N2,M0,G2,8070/3,Middle third of esophagus
+TCGA-R6-A6Y0,54.9,,white,not hispanic or latino,Alive,,1641.0,"Adenocarcinoma, NOS",20045.0,,,,,G2,8140/3,Lower third of esophagus
+TCGA-LN-A7HY,50.1,,asian,not hispanic or latino,Alive,,366.0,"Squamous cell carcinoma, NOS",18296.0,Stage III,T3,N1,M0,G2,8070/3,Upper third of esophagus
+TCGA-IG-A97I,58.2,,white,not hispanic or latino,Alive,,370.0,"Squamous cell carcinoma, NOS",21271.0,Stage IIA,T2,N0,M0,G2,8070/3,Lower third of esophagus
+TCGA-IG-A3I8,51.4,,white,not hispanic or latino,Alive,,1012.0,"Squamous cell carcinoma, keratinizing, NOS",18786.0,Stage IIA,T3,N0,M0,G2,8071/3,"Esophagus, NOS"
+TCGA-R6-A6XQ,58.6,,white,not hispanic or latino,Dead,193.0,,"Adenocarcinoma, NOS",21410.0,,,,,G3,8140/3,Lower third of esophagus
+TCGA-LN-A7HX,72.6,,asian,not hispanic or latino,Alive,,372.0,"Squamous cell carcinoma, NOS",26517.0,Stage IIA,T2,N0,M0,G2,8070/3,Middle third of esophagus
+TCGA-XP-A8T8,49.4,,black or african american,hispanic or latino,Alive,,437.0,"Squamous cell carcinoma, NOS",18048.0,Stage IIB,T1,N1,M0,G1,8070/3,Lower third of esophagus
+TCGA-R6-A6KZ,42.5,,white,not hispanic or latino,Dead,154.0,,"Adenocarcinoma, NOS",15512.0,,,,,G3,8140/3,Lower third of esophagus
+TCGA-JY-A6F8,56.3,,white,Unknown,Alive,,3714.0,"Adenocarcinoma, NOS",20550.0,Stage I,T1,N0,M0,G1,8140/3,Lower third of esophagus
+TCGA-RE-A7BO,72.1,,white,not hispanic or latino,Dead,213.0,,"Adenocarcinoma, NOS",26348.0,Stage IIB,T1,N1,M0,G3,8140/3,Lower third of esophagus
+TCGA-LN-A49U,62.9,,asian,not hispanic or latino,Alive,,467.0,"Squamous cell carcinoma, NOS",22969.0,Stage IIA,T3,N0,M0,G1,8070/3,Middle third of esophagus
+TCGA-L5-A4OT,77.1,,white,not reported,Dead,149.0,149.0,"Adenocarcinoma, NOS",28162.0,Stage IV,T3,N1,M1a,GX,8140/3,Lower third of esophagus
+TCGA-L5-A4OP,68.0,,white,not reported,Alive,,218.0,"Adenocarcinoma, NOS",24829.0,Stage IA,T1,N0,MX,G2,8140/3,Lower third of esophagus
+TCGA-JY-A938,75.7,,white,Unknown,Alive,,,"Adenocarcinoma, NOS",28126.0,,,,,,8140/3,"Adrenal gland, NOS"
+TCGA-R6-A8WC,57.0,,white,not hispanic or latino,Alive,,70.0,"Adenocarcinoma, NOS",20812.0,,,,,G2,8140/3,Lower third of esophagus
+TCGA-L5-A8NL,56.2,,white,not reported,Alive,,402.0,"Adenocarcinoma, NOS",20542.0,Stage III,T3,N1,M0,GX,8140/3,Lower third of esophagus
+TCGA-IG-A50L,58.1,,asian,not hispanic or latino,Alive,,16.0,"Squamous cell carcinoma, NOS",21214.0,Stage IIIA,T3,N1,M0,G2,8070/3,Lower third of esophagus
+TCGA-IG-A3YB,61.1,,white,not hispanic or latino,Alive,,80.0,"Squamous cell carcinoma, NOS",22316.0,Stage IIIA,T3,N1,M0,G2,8070/3,Lower third of esophagus
+TCGA-IG-A8O2,62.6,,asian,not hispanic or latino,Dead,142.0,142.0,"Squamous cell carcinoma, NOS",22869.0,Stage IIIB,T3,N2,M0,G3,8070/3,Lower third of esophagus
+TCGA-VR-AA7I,70.8,,white,not reported,Dead,484.0,,"Squamous cell carcinoma, NOS",25855.0,Stage III,T4,N0,M0,G1,8070/3,Middle third of esophagus
+TCGA-JY-A93F,58.2,,white,Unknown,Alive,,731.0,"Squamous cell carcinoma, NOS",21257.0,Stage IB,T2,N0,M0,G1,8070/3,Lower third of esophagus
+TCGA-L5-A43C,81.5,,white,not reported,Alive,,96.0,Mucinous adenocarcinoma,29753.0,,,,,GX,8480/3,Lower third of esophagus
+TCGA-V5-A7RC,56.0,,black or african american,not hispanic or latino,Dead,104.0,,"Squamous cell carcinoma, NOS",20527.0,,,,,,8070/3,Liver
+TCGA-V5-AASW,72.7,,white,not hispanic or latino,Alive,,,"Adenocarcinoma, NOS",26853.0,,,,,,8140/3,"Lung, NOS"
+TCGA-LN-A49N,50.7,,asian,not hispanic or latino,Alive,,378.0,"Squamous cell carcinoma, NOS",18503.0,Stage IIB,T2,N1,M0,G2,8070/3,Middle third of esophagus
+TCGA-L5-A4OU,81.2,,white,not reported,Alive,,882.0,"Adenocarcinoma, NOS",29674.0,Stage IIA,T3,N0,M0,GX,8140/3,Lower third of esophagus
+TCGA-LN-A49X,44.2,,asian,not hispanic or latino,Alive,,384.0,"Squamous cell carcinoma, NOS",16154.0,Stage IIA,T3,N0,M0,G2,8070/3,Middle third of esophagus
+TCGA-LN-A49M,62.8,,asian,not hispanic or latino,Alive,,385.0,"Squamous cell carcinoma, NOS",22933.0,Stage IIA,T2,N0,M0,G1,8070/3,Lower third of esophagus
+TCGA-VR-A8EU,51.2,,white,not reported,Dead,557.0,,"Squamous cell carcinoma, NOS",18711.0,Stage IV,T1,N1,M1,G2,8070/3,Middle third of esophagus
+TCGA-LN-A49P,71.7,,asian,not hispanic or latino,Alive,,,"Squamous cell carcinoma, NOS",26509.0,,,,,,8070/3,Not Reported
+TCGA-LN-A8HZ,56.2,,asian,not hispanic or latino,Alive,,375.0,"Squamous cell carcinoma, NOS",20510.0,Stage IIA,T2,N0,M0,G3,8070/3,Middle third of esophagus
+TCGA-JY-A6FH,53.5,,white,Unknown,Alive,,,"Adenocarcinoma, NOS",20373.0,,,,,,8140/3,"Lung, NOS"
+TCGA-VR-A8EY,44.5,,white,not reported,Alive,,1025.0,"Squamous cell carcinoma, NOS",16255.0,Stage IIA,T3,N0,M0,G1,8070/3,Lower third of esophagus
+TCGA-L5-A88V,60.4,,white,not reported,Alive,,79.0,"Adenocarcinoma, NOS",22066.0,Stage III,T3,N1,MX,GX,8140/3,Lower third of esophagus
+TCGA-L5-A8NV,75.4,,white,not reported,Dead,1599.0,,"Adenocarcinoma, NOS",28798.0,,,,,,8140/3,Not Reported
+TCGA-LN-A4A9,58.1,,asian,not hispanic or latino,Dead,351.0,351.0,"Squamous cell carcinoma, NOS",21217.0,Stage IIA,T2,N0,M0,G1,8070/3,Middle third of esophagus
+TCGA-2H-A9GO,58.8,,Unknown,Unknown,Dead,494.0,,"Adenocarcinoma, NOS",21848.0,,,,,,8140/3,"Lung, NOS"
+TCGA-L5-A4ON,65.6,,white,not reported,Dead,558.0,558.0,"Adenocarcinoma, NOS",23970.0,Stage IIB,T1,N1,Unknown,GX,8140/3,Lower third of esophagus
+TCGA-LN-A9FO,42.6,,asian,not hispanic or latino,Alive,,4.0,"Squamous cell carcinoma, NOS",15551.0,Stage IIA,T2,N0,M0,G2,8070/3,Lower third of esophagus
+TCGA-X8-AAAR,69.5,,white,not hispanic or latino,Alive,,554.0,"Adenocarcinoma, NOS",25370.0,Unknown,T1,N1,Unknown,G1,8140/3,Lower third of esophagus
+TCGA-L5-A4OJ,70.2,,white,not reported,Alive,,639.0,"Adenocarcinoma, NOS",25657.0,Stage I,T1,N0,M0,G3,8140/3,Lower third of esophagus
+TCGA-LN-A4MR,57.9,,asian,not hispanic or latino,Alive,,402.0,"Squamous cell carcinoma, NOS",21142.0,Stage IIA,T2,N0,M0,G2,8070/3,"Esophagus, NOS"
+TCGA-R6-A8W8,72.6,,white,not hispanic or latino,Dead,88.0,,"Adenocarcinoma, NOS",26535.0,,,,,G2,8140/3,Lower third of esophagus
+TCGA-V5-A7RB,59.3,,Unknown,hispanic or latino,Dead,161.0,161.0,"Adenocarcinoma, NOS",21654.0,Unknown,T0,N1,MX,GX,8140/3,Lower third of esophagus
+TCGA-2H-A9GI,68.7,,Unknown,Unknown,Dead,435.0,,"Adenocarcinoma, NOS",25497.0,,,,,,8140/3,"Bone, NOS"
+TCGA-L5-A8NU,84.2,,white,not reported,Dead,2134.0,,"Adenocarcinoma, NOS",30738.0,Stage IIA,T2,N0,M0,G3,8140/3,Lower third of esophagus
+TCGA-LN-A9FR,70.2,,asian,not hispanic or latino,Alive,,373.0,"Squamous cell carcinoma, NOS",25657.0,Stage IIB,T2,N1,M0,G2,8070/3,Upper third of esophagus
+TCGA-VR-A8ET,64.4,,white,not reported,Dead,47.0,,"Squamous cell carcinoma, NOS",23517.0,Stage IIA,T2,N0,M0,G2,8070/3,Lower third of esophagus
+TCGA-R6-A6L4,28.0,,white,not hispanic or latino,Dead,496.0,,"Adenocarcinoma, NOS",10382.0,,,,,,8140/3,Liver
+TCGA-L5-A8NW,55.3,,white,not reported,Dead,1402.0,,"Adenocarcinoma, NOS",20194.0,,T2,N1,M0,GX,8140/3,Lower third of esophagus
+TCGA-L5-A4OS,86.5,,white,not reported,Alive,,1271.0,"Adenocarcinoma, NOS",31601.0,Stage IIB,T2,N1,M0,G3,8140/3,Lower third of esophagus
+TCGA-VR-A8EP,51.9,,white,not reported,Alive,,824.0,"Squamous cell carcinoma, NOS",18942.0,Stage IIIB,T3,N2,M0,G3,8070/3,Middle third of esophagus
+TCGA-L5-A8NR,81.4,,not reported,not reported,Alive,,,"Adenocarcinoma, NOS",29995.0,,,,,,8140/3,Liver
+TCGA-L7-A6VZ,62.2,,white,not hispanic or latino,Alive,,315.0,"Adenocarcinoma, NOS",22730.0,Stage IIIC,T3,N3,MX,G2,8140/3,Middle third of esophagus
+TCGA-VR-AA4G,51.8,,white,not reported,Alive,,549.0,"Squamous cell carcinoma, NOS",18909.0,Stage IIIA,T2,N2,M0,G2,8070/3,Middle third of esophagus
+TCGA-LN-A4A4,36.7,,asian,not hispanic or latino,Alive,,383.0,"Squamous cell carcinoma, NOS",13419.0,Stage III,T3,N1,M0,GX,8070/3,Lower third of esophagus
+TCGA-LN-A49S,59.9,,asian,not hispanic or latino,Alive,,,"Squamous cell carcinoma, NOS",21914.0,,,,,,8070/3,Not Reported
+TCGA-L5-A4OG,79.7,,white,not reported,Alive,,,Not Reported,20620.0,,,,,,Not Reported,"Breast, NOS"
+TCGA-2H-A9GJ,58.0,,Unknown,Unknown,Dead,1781.0,,"Adenocarcinoma, NOS",21180.0,Stage I,T1,N0,M0,G2,8140/3,Lower third of esophagus
+TCGA-KH-A6WC,82.6,,white,not hispanic or latino,Alive,,191.0,"Squamous cell carcinoma, NOS",30167.0,Stage IA,T1,N0,M0,GX,8070/3,Middle third of esophagus
+TCGA-2H-A9GQ,80.8,,Unknown,Unknown,Dead,128.0,,"Adenocarcinoma, NOS",29609.0,,,,,,8140/3,Liver
+TCGA-L5-A891,51.8,,white,not reported,Alive,,114.0,"Adenocarcinoma, NOS",18925.0,Unknown,T3,N1,M0,GX,8140/3,Lower third of esophagus
+TCGA-XP-A8T6,54.4,,black or african american,hispanic or latino,Dead,763.0,763.0,"Squamous cell carcinoma, NOS",19886.0,Stage IIB,T2,N1,M0,G2,8070/3,Lower third of esophagus
+TCGA-L5-A893,71.6,,white,not reported,Alive,,92.0,"Adenocarcinoma, NOS",26143.0,Stage I,T1,N0,M0,GX,8140/3,Lower third of esophagus
+TCGA-VR-A8EZ,47.8,,white,not reported,Dead,553.0,,"Squamous cell carcinoma, NOS",17449.0,Stage IIIC,T3,N3,M0,G2,8070/3,Lower third of esophagus
+TCGA-ZR-A9CJ,65.0,,white,not hispanic or latino,Dead,600.0,600.0,"Adenocarcinoma, NOS",23752.0,Stage IIIC,T3,N3,MX,G3,8140/3,Lower third of esophagus
