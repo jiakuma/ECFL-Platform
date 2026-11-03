@@ -7,7 +7,7 @@ const OUT = 'C:/Users/wwt29/WorkBuddy/2026-08-24-22-53-34/.tmp-shots'
 fs.mkdirSync(OUT, { recursive: true })
 
 const chrome = spawn(CHROME, [
-  '--headless=new', '--disable-gpu', '--hide-scrollbars', '--window-size=1440,1100',
+  '--headless=new', '--disable-gpu', '--hide-scrollbars', '--window-size=1440,1900',
   `--remote-debugging-port=${PORT}`,
   '--user-data-dir=C:/Users/wwt29/WorkBuddy/2026-08-24-22-53-34/.tmp-profile-fd',
   'about:blank',
@@ -43,6 +43,10 @@ const send = (method, params = {}) => {
   return new Promise((res) => pending.set(mid, res))
 }
 const evalJs = async (e) => (await send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }))?.result?.value
+const shot = async (name) => {
+  const r = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true })
+  fs.writeFileSync(`${OUT}/${name}.png`, Buffer.from(r.data, 'base64'))
+}
 
 await send('Page.enable')
 await send('Runtime.enable')
@@ -53,23 +57,27 @@ await send('Page.navigate', { url: 'http://localhost:5173/#/federated/FT-2026-00
 await sleep(600)
 await send('Page.reload', {})
 await sleep(5000)
-console.log('TITLE:', await evalJs(`document.title`))
-console.log('HAS_HERO:', await evalJs(`!!document.querySelector('.fd-hero')`))
-console.log('META_PRESENT:', await evalJs(`!!document.querySelector('.fd__meta')`))
-console.log('PANELS:', await evalJs(`document.querySelectorAll('.panel').length`))
-console.log('KV_ITEMS:', await evalJs(`document.querySelectorAll('.kv__item').length`))
-const r = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true })
-fs.writeFileSync(`${OUT}/fd-detail.png`, Buffer.from(r.data, 'base64'))
 
-await evalJs(`[...document.querySelectorAll('.el-tabs__item')].find(e=>e.textContent.trim()==='审批反馈')?.click()`)
-await sleep(1200)
-const r2 = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true })
-fs.writeFileSync(`${OUT}/fd-approval.png`, Buffer.from(r2.data, 'base64'))
+console.log('HAS_HEAD:', await evalJs(`!!document.querySelector('.fd-head')`))
+console.log('METRICS:', await evalJs(`document.querySelectorAll('.metric').length`))
+console.log('TABS:', await evalJs(`[...document.querySelectorAll('.fd-tab')].map(e=>e.textContent.trim()).join('|')`))
+console.log('SPEC_CELLS:', await evalJs(`document.querySelectorAll('.spec__cell').length`))
+console.log('SCROLL_W:', await evalJs(`document.documentElement.scrollWidth`))
+await evalJs(`window.scrollTo(0,0)`)
+await sleep(900)
+await shot('fd-detail')
 
-await evalJs(`[...document.querySelectorAll('.el-tabs__item')].find(e=>e.textContent.trim()==='训练管理')?.click()`)
+await evalJs(`[...document.querySelectorAll('.fd-tab')].find(e=>e.textContent.includes('审批反馈'))?.click()`)
 await sleep(1200)
-const r3 = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true })
-fs.writeFileSync(`${OUT}/fd-train.png`, Buffer.from(r3.data, 'base64'))
+await evalJs(`window.scrollTo(0,0)`)
+await sleep(300)
+await shot('fd-approval')
+
+await evalJs(`[...document.querySelectorAll('.fd-tab')].find(e=>e.textContent.includes('训练管理'))?.click()`)
+await sleep(1200)
+await evalJs(`window.scrollTo(0,0)`)
+await sleep(300)
+await shot('fd-train')
 console.log('ERRORS:', errs.slice(0, 8))
 ws.close()
 chrome.kill()

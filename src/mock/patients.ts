@@ -81,27 +81,9 @@ export interface PatientRow {
 }
 
 export const patientList: PatientRow[] = [
-  // 临床特征优先参考《样例数据(4)》十例病例；机构、PMI、权限等为平台演示层信息。
+  // 当前仅保留 1 例演示病例；机构、PMI、权限等为平台演示层信息。
   { id: 'P-0001', code: 'EC-2026-000128', name: '王晓明', gender: '男', age: 61, diagnosis: '食管鳞状细胞癌', histology: '中-低分化鳞癌（化疗后）', site: '胸中下段', stage: 'cT2N1M0 → ypT2N0', org: '国家癌症中心', level: 'full', status: '随访中', updatedAt: '2026-08-27', followUps: 1, resources: 4,
     primaryId: 'PMI-EC-000128', localIds: [{ org: '江城人民医院', id: 'JC-2026-0514' }, { org: '国家癌症中心', id: 'NCC-2026-0831' }] },
-  { id: 'P-0002', code: 'EC-2026-000217', name: '陈建国', gender: '男', age: 55, diagnosis: '食管鳞状细胞癌', histology: '中-低分化鳞癌', site: '胸中段', stage: 'pT1bN0M0', org: '国家癌症中心', level: 'masked', status: '随访中', updatedAt: '2026-08-18', followUps: 1, resources: 5,
-    primaryId: 'PMI-EC-000217', localIds: [{ org: '国家癌症中心', id: 'NCC-2026-0217' }] },
-  { id: 'P-0003', code: 'EC-2026-000309', name: '李国强', gender: '男', age: 68, diagnosis: '食管鳞状细胞癌', histology: '新辅助后无癌残存（pCR）', site: '胸下段', stage: 'ypT0N0M0', org: '华东肿瘤医院', level: 'masked', status: '随访中', updatedAt: '2026-08-20', followUps: 1, resources: 6,
-    primaryId: 'PMI-EC-000309', localIds: [{ org: '华东肿瘤医院', id: 'HD-2026-0309' }] },
-  { id: 'P-0004', code: 'EC-2026-000421', name: '刘秀英', gender: '女', age: 69, diagnosis: '早期食管鳞状细胞癌', histology: 'HGIN + 小灶浸润中分化鳞癌', site: '胸中下段', stage: 'pT1aN0M0', org: '国家癌症中心', level: 'full', status: '随访中', updatedAt: '2026-08-26', followUps: 1, resources: 4,
-    primaryId: 'PMI-EC-000421', localIds: [{ org: '解放军第五医学中心', id: 'PLA5-2026-0621' }, { org: '国家癌症中心', id: 'NCC-2026-0709' }] },
-  { id: 'P-0005', code: 'EC-2026-000508', name: '周志远', gender: '男', age: 67, diagnosis: '食管原位癌', histology: 'HGIN + 少许 LGIN', site: '胸中段', stage: 'pTisN0M0', org: '国家癌症中心', level: 'summary', status: '随访中', updatedAt: '2026-08-17', followUps: 1, resources: 4,
-    primaryId: 'PMI-EC-000508', localIds: [{ org: '中国中医科学院广安门医院', id: 'GAM-2026-0601' }, { org: '国家癌症中心', id: 'NCC-2026-0703' }] },
-  { id: 'P-0006', code: 'EC-2026-000623', name: '张淑华', gender: '女', age: 73, diagnosis: '食管鳞状细胞癌', histology: '中分化鳞癌', site: '胸中段', stage: 'ypT1bN0M0', org: '北方肿瘤医院', level: 'masked', status: '随访中', updatedAt: '2026-08-21', followUps: 1, resources: 5,
-    primaryId: 'PMI-EC-000623', localIds: [{ org: '北方肿瘤医院', id: 'BF-2026-0623' }] },
-  { id: 'P-0007', code: 'EC-2026-000734', name: '赵成林', gender: '男', age: 63, diagnosis: '食管鳞状细胞癌', histology: '中分化鳞癌', site: '胸中段', stage: 'cT3~4N+M0', org: '江城人民医院', level: 'full', status: '评估中', updatedAt: '2026-08-24', followUps: 0, resources: 5,
-    primaryId: 'PMI-EC-000734', localIds: [{ org: '江城人民医院', id: 'JC-2026-0734' }] },
-  { id: 'P-0008', code: 'EC-2026-000842', name: '孙建军', gender: '男', age: 64, diagnosis: '食管鳞状细胞癌', histology: '中分化鳞癌', site: '胸中段', stage: 'cT?N+M0（疑）', org: '华东肿瘤医院', level: 'summary', status: '评估中', updatedAt: '2026-08-24', followUps: 0, resources: 4,
-    primaryId: 'PMI-EC-000842', localIds: [{ org: '华东肿瘤医院', id: 'HD-2026-0842' }, { org: '国家癌症中心', id: 'NCC-2026-0842' }], duplicateFlag: true },
-  { id: 'P-0009', code: 'EC-2026-000919', name: '吴德明', gender: '男', age: 67, diagnosis: '食管基底细胞样鳞状细胞癌', histology: '基底细胞样鳞状细胞癌', site: '胸中段', stage: '局部进展期', org: '国家癌症中心', level: 'masked', status: '评估中', updatedAt: '2026-08-24', followUps: 0, resources: 5,
-    primaryId: 'PMI-EC-000919', localIds: [{ org: '外院协作节点', id: 'EXT-2026-0729' }, { org: '国家癌症中心', id: 'NCC-2026-0804' }] },
-  { id: 'P-0010', code: 'EC-2026-001033', name: '郑国庆', gender: '男', age: 78, diagnosis: '同时性双发食管病变', histology: 'LGIN + 中-低分化鳞癌', site: '胸上/中段', stage: '待评估', org: '国家癌症中心', level: 'masked', status: '评估中', updatedAt: '2026-08-25', followUps: 0, resources: 3,
-    primaryId: 'PMI-EC-001033', localIds: [{ org: '外院协作节点', id: 'EXT-2026-0729' }, { org: '国家癌症中心', id: 'NCC-2026-0805' }], duplicateFlag: true },
 ]
 
 // ---------- 详情子结构 ----------

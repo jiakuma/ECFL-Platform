@@ -11,13 +11,10 @@ import pathologyImage from '@/assets/patients/P-0001/pathology/escc-he-high-mag.
 import {
   resolvePatientDetail,
   resolveCourseStages,
-  resolveCourseMilestones,
   maskIdNo,
   maskPhone,
   maskAddress,
   type CourseStageKey,
-  type CourseMilestone,
-  type MilestoneEvidence,
   type DataLevel,
   type TimelineNode,
   type VisitRecord,
@@ -51,71 +48,17 @@ const navItems: { key: NavKey; label: string; color: string }[] = [
   { key: 'followup', label: '随访', color: '#10b981' },
 ]
 const activeNav = ref<NavKey>('screening')
-const selectedNodeId = ref('')
 const courseStages = computed(() => resolveCourseStages(patient.value.timeline))
 const stageOfNodeId = computed(() => {
   const m = new Map<string, CourseStageKey>()
   courseStages.value.forEach((s) => s.nodes.forEach((n) => m.set(n.id, s.key)))
   return m
 })
-const courseMilestones = computed(() => resolveCourseMilestones(courseStages.value))
-const stageMeta: Record<CourseStageKey, { label: string; color: string }> = {
-  screening: { label: '早筛', color: '#0ea5e9' },
-  diagnosis: { label: '诊断', color: '#8b5cf6' },
-  treatment: { label: '治疗', color: '#06b6d4' },
-  followup: { label: '随访', color: '#10b981' },
-}
-const journeyColor: Record<CourseStageKey, string> = {
-  screening: '#0ea5e9',
-  diagnosis: '#8b5cf6',
-  treatment: '#f59e0b',
-  followup: '#10b981',
-}
-const journeyNo: Record<CourseStageKey, string> = {
-  screening: '01',
-  diagnosis: '02',
-  treatment: '03',
-  followup: '04',
-}
-const journeySub: Record<CourseStageKey, string> = {
-  screening: '发现疾病线索',
-  diagnosis: '明确疾病状态',
-  treatment: '疾病干预过程',
-  followup: '长期疾病管理',
-}
-function stageColorOf(k: CourseStageKey): string {
-  return stageMeta[k].color
-}
-function stageLabelOf(k: CourseStageKey): string {
-  return stageMeta[k].label
-}
-const milestoneStages = computed(() => {
-  const order: CourseStageKey[] = ['screening', 'diagnosis', 'treatment', 'followup']
-  return order
-    .map((key) => ({
-      key,
-      label: stageMeta[key].label,
-      color: stageMeta[key].color,
-      items: courseMilestones.value.filter((m) => m.stage === key),
-    }))
-    .filter((g) => g.items.length > 0)
-})
-const selectedStageKey = computed(() => {
-  const m = courseMilestones.value.find((x) => x.id === selectedNodeId.value)
-  return m?.stage
-})
-function stageRangeOf(items: { date: string }[]): string {
-  const ds = items.map((i) => i.date).filter(Boolean).sort()
-  if (!ds.length) return ''
-  const fmt = (d: string) => d.slice(0, 7)
-  return ds.length === 1 ? fmt(ds[0]) : `${fmt(ds[0])} — ${fmt(ds[ds.length - 1])}`
-}
 watch(
   () => route.params.id,
   () => {
     const first = courseStages.value.find((s) => s.nodes.length > 0)
     activeNav.value = first ? first.key : 'screening'
-    selectedNodeId.value = ''
   },
   { immediate: true },
 )
@@ -139,7 +82,6 @@ const flashVisitId = ref('')
 async function goToEvent(node: TimelineNode) {
   if (node.kind === '就诊节点') {
     activeNav.value = stageOfNodeId.value.get(node.id) ?? 'screening'
-    selectedNodeId.value = node.id
     await nextTick()
     const el = document.getElementById('visit-' + node.id)
     if (el) {
@@ -153,7 +95,6 @@ async function goToEvent(node: TimelineNode) {
   }
   const target = stageOfNodeId.value.get(node.id) ?? 'screening'
   activeNav.value = target
-  selectedNodeId.value = node.id
   await nextTick()
   if (node.kind === '治疗决策') {
     highlightRef.value = 'treatment-decision'
@@ -190,10 +131,6 @@ async function goToEvent(node: TimelineNode) {
   window.setTimeout(() => {
     if (highlightRef.value === id) highlightRef.value = ''
   }, 2600)
-}
-function locateByNodeId(id: string) {
-  const node = timelineAll.value.find((n) => n.id === id)
-  if (node) goToEvent(node)
 }
 const recentNodeId = computed(() => timelineAll.value[timelineAll.value.length - 1]?.id ?? '')
 const currentTreatment = computed(
@@ -611,54 +548,6 @@ const progressionRecords = computed(() => {
       </div>
     </section>
         <div class="pd__main">
-            <aside class="pd__axis">
-        <div class="pd__axis-head">
-          <h3 class="pd__h pd__h--inline">关键病程节点</h3>
-        </div>
-                <div class="pd__ms">
-          <section
-            v-for="grp in milestoneStages"
-            :key="grp.key"
-            class="pd__ms-group"
-            :class="{ 'is-active': grp.key === selectedStageKey }"
-          >
-                        <header class="pd__ms-stage-head" :style="{ '--stage-color': journeyColor[grp.key] }">
-              <span class="pd__ms-chapter">{{ journeyNo[grp.key] }}</span>
-              <div class="pd__ms-stage-meta">
-                <div class="pd__ms-stage-title">
-                  <span class="pd__ms-stage-dot"></span>
-                  <span class="pd__ms-stage-name">{{ grp.label }}阶段</span>
-                </div>
-                <div class="pd__ms-stage-sub">{{ journeySub[grp.key] }}</div>
-                <div v-if="stageRangeOf(grp.items)" class="pd__ms-stage-range">{{ stageRangeOf(grp.items) }}</div>
-              </div>
-            </header>
-                        <div
-              v-for="m in grp.items"
-              :key="m.id"
-              class="pd__ms-item"
-              :class="{ 'is-selected': m.id === selectedNodeId }"
-              :style="{ '--stage-color': journeyColor[grp.key] }"
-            >
-              <span class="pd__ms-dot"></span>
-              <div class="pd__ms-body" @click="locateByNodeId(m.id)">
-                <div class="pd__ms-date">{{ m.date || '待补全' }}</div>
-                <div class="pd__ms-title">{{ m.title }}</div>
-                <div v-if="m.brief" class="pd__ms-brief">{{ m.brief }}</div>
-                <div v-if="m.tags.length" class="pd__ms-tags">
-                  <span
-                    v-for="t in m.tags"
-                    :key="t.id"
-                    class="pd__ms-tag"
-                    :title="'定位证据：' + t.label"
-                    @click.stop="locateByNodeId(t.id)"
-                  >{{ t.label }}</span>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-      </aside>
             <div class="pd__detail">
                 <div class="pd__nav-sticky">
           <nav class="pd__nav">
@@ -1818,198 +1707,9 @@ const progressionRecords = computed(() => {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   overflow: hidden;
-}
-.pd__axis {
-  min-height: 0;
-  overflow-y: auto;
-  background: #fff;
-  border: 1px solid var(--pf-border);
-  border-radius: 10px;
-  padding: 14px 16px;
-}
-.pd__axis-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-.pd__ms {
-  position: relative;
-  padding: 6px 4px 4px;
-}
-.pd__ms::before {
-  content: '';
-  position: absolute;
-  left: 17px;
-  top: 26px;
-  bottom: 22px;
-  width: 2px;
-  background: linear-gradient(180deg, #0ea5e9 0%, #8b5cf6 36%, #f59e0b 68%, #10b981 100%);
-  opacity: 0.5;
-  border-radius: 2px;
-}
-.pd__ms-group {
-  position: relative;
-}
-.pd__ms-group + .pd__ms-group {
-  margin-top: 18px;
-}
-.pd__ms-stage-head {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  padding: 4px 0 14px 50px;
-}
-.pd__ms-chapter {
-  position: absolute;
-  left: 3px;
-  top: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: #fff;
-  border: 2px solid var(--stage-color, #94a3b8);
-  color: var(--stage-color, #64748b);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 0 5px #fff;
-  z-index: 2;
-  transition: transform 0.22s ease, box-shadow 0.22s ease;
-}
-.pd__ms-group.is-active .pd__ms-chapter {
-  transform: scale(1.07);
-  box-shadow: 0 0 0 5px #fff, 0 0 14px 2px color-mix(in srgb, var(--stage-color, #64748b) 45%, transparent);
-}
-.pd__ms-stage-meta {
-  padding-top: 3px;
-}
-.pd__ms-stage-title {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.pd__ms-stage-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--stage-color, #94a3b8);
-  flex: none;
-}
-.pd__ms-stage-name {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--pf-text);
-  letter-spacing: 0.02em;
-}
-.pd__ms-stage-sub {
-  margin-top: 2px;
-  font-size: 11.5px;
-  color: var(--pf-text-faint);
-  letter-spacing: 0.01em;
-}
-.pd__ms-stage-range {
-  margin-top: 3px;
-  font-size: 10.5px;
-  color: var(--pf-text-faint);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
-}
-.pd__ms-item {
-  position: relative;
-  padding: 0 0 18px 50px;
-}
-.pd__ms-dot {
-  position: absolute;
-  left: 14px;
-  top: 7px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--stage-color, #94a3b8);
-  box-shadow: 0 0 0 3px #fff;
-  z-index: 1;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-.pd__ms-body {
-  position: relative;
-  cursor: pointer;
-  padding: 2px 8px;
-  border: none;
-  border-left: 2px solid transparent;
-  border-radius: 0;
-  background: transparent;
-  transition: transform 0.18s ease, background 0.15s ease, border-color 0.15s ease;
-}
-.pd__ms-item:hover .pd__ms-dot {
-  transform: scale(1.25);
-}
-.pd__ms-item:hover .pd__ms-body {
-  transform: translateY(-1px);
-  background: rgba(15, 23, 42, 0.025);
-}
-.pd__ms-item.is-selected .pd__ms-dot {
-  transform: scale(1.5);
-  box-shadow: 0 0 0 4px #fff, 0 0 12px 1px color-mix(in srgb, var(--stage-color, #64748b) 55%, transparent);
-}
-.pd__ms-item.is-selected .pd__ms-body {
-  background: color-mix(in srgb, var(--stage-color, #64748b) 7%, transparent);
-  border-left-color: var(--stage-color, #64748b);
-}
-.pd__ms-date {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--pf-text-faint);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-  margin-bottom: 1px;
-}
-.pd__ms-title {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--pf-text);
-  line-height: 1.4;
-}
-.pd__ms-brief {
-  margin-top: 2px;
-  font-size: 11.5px;
-  color: var(--pf-text-faint);
-  line-height: 1.45;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.pd__ms-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 5px;
-}
-.pd__ms-tag {
-  font-size: 10px;
-  font-weight: 500;
-  color: #64748b;
-  background: rgba(100, 116, 139, 0.07);
-  border: 1px solid rgba(100, 116, 139, 0.12);
-  border-radius: 4px;
-  padding: 0 6px;
-  line-height: 16px;
-  cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-}
-.pd__ms-tag:hover {
-  color: #0e7490;
-  background: rgba(6, 182, 212, 0.1);
-  border-color: rgba(6, 182, 212, 0.22);
 }
 .pd__detail {
   min-width: 0;
@@ -2841,12 +2541,7 @@ const progressionRecords = computed(() => {
 }
 @media (max-width: 1180px) {
   .pd__main {
-    grid-template-columns: 1fr;
     overflow-y: auto;
-  }
-  .pd__axis {
-    overflow: visible;
-    max-height: none;
   }
   .pd__detail {
     overflow: visible;

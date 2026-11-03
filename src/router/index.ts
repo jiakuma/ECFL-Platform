@@ -31,14 +31,6 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '平台首页' },
   },
 
-  // 平台概览（运营态势 / 管理驾驶舱，与平台首页分离）
-  {
-    path: '/overview',
-    name: 'overview',
-    component: () => import('@/views/PlatformOverviewView.vue'),
-    meta: { title: '平台概览' },
-  },
-
   // 专病数据中心
   {
     path: '/dataset/patients',
@@ -53,7 +45,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       title: '患者档案详情',
       breadcrumb: [
-        { title: '专病数据中心', to: '/overview' },
+        { title: '专病数据中心', to: '/dataset/patients' },
         { title: '患者主档案', to: '/dataset/patients' },
         { title: '患者详情' },
       ],
@@ -66,7 +58,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       title: '患者详细信息',
       breadcrumb: [
-        { title: '专病数据中心', to: '/overview' },
+        { title: '专病数据中心', to: '/dataset/patients' },
         { title: '患者主档案', to: '/dataset/patients' },
         { title: '患者详细信息' },
       ],
@@ -79,7 +71,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       title: '检验记录',
       breadcrumb: [
-        { title: '专病数据中心', to: '/overview' },
+        { title: '专病数据中心', to: '/dataset/patients' },
         { title: '患者主档案', to: '/dataset/patients' },
         { title: '检验记录' },
       ],
@@ -93,7 +85,7 @@ const routes: RouteRecordRaw[] = [
       title: '多模态资源',
       desc: '影像、病理切片、文本报告与基因测序等多模态数据的存储与预览。',
       breadcrumb: [
-        { title: '专病数据中心', to: '/overview' },
+        { title: '专病数据中心', to: '/dataset/patients' },
         { title: '多模态资源' },
       ],
     },
@@ -106,7 +98,7 @@ const routes: RouteRecordRaw[] = [
       title: '基本信息对齐',
       desc: '多中心患者基本信息（性别 / 出生日期 / 吸烟史 / 患者主索引）对齐：规则可查、冲突可控、过程可追溯。',
       breadcrumb: [
-        { title: '专病数据中心', to: '/overview' },
+        { title: '专病数据中心', to: '/dataset/patients' },
         { title: '基本信息对齐' },
       ],
     },
@@ -195,8 +187,57 @@ const routes: RouteRecordRaw[] = [
   },
   sp('/results', 'results-center', '结果中心', [{ title: '结果中心' }]),
 
-  // —— 管理后台（本期全部为占位页） ——
-  sp('/admin/overview', 'admin-overview', '平台总览', [{ title: '平台总览' }]),
+  // —— 科研项目中心 ——
+  {
+    path: '/project',
+    name: 'project-list',
+    component: () => import('@/views/ProjectListView.vue'),
+    meta: {
+      title: '我的科研项目',
+      breadcrumb: [
+        { title: '科研项目中心', to: '/project' },
+        { title: '我的科研项目' },
+      ],
+    },
+  },
+  {
+    path: '/project/create',
+    name: 'project-create',
+    component: () => import('@/views/ProjectCreateView.vue'),
+    meta: {
+      title: '项目创建',
+      breadcrumb: [
+        { title: '科研项目中心', to: '/project' },
+        { title: '我的科研项目', to: '/project' },
+        { title: '项目创建' },
+      ],
+    },
+  },
+  {
+    path: '/project/:id',
+    name: 'project-detail',
+    component: () => import('@/views/ProjectDetailView.vue'),
+    meta: {
+      title: '项目详情',
+      breadcrumb: [
+        { title: '科研项目中心', to: '/project' },
+        { title: '我的科研项目', to: '/project' },
+        { title: '项目详情' },
+      ],
+    },
+  },
+
+  // —— 管理后台 ——
+  {
+    path: '/admin/overview',
+    name: 'admin-overview',
+    component: () => import('@/views/PlatformOverviewView.vue'),
+    meta: {
+      title: '平台总览',
+      desc: '平台运行态势：联盟协作、节点状态、合规与安全。',
+      breadcrumb: [{ title: '平台总览' }],
+    },
+  },
   {
     path: '/admin/data',
     name: 'admin-data',

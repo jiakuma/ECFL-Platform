@@ -22,7 +22,6 @@ export const appMenus: MenuGroup[] = [
     icon: 'HomeFilled',
     children: [
       { path: '/', title: '平台首页', icon: 'HomeFilled' },
-      { path: '/overview', title: '平台概览', icon: 'DataLine' },
     ],
   },
   {
@@ -37,6 +36,15 @@ export const appMenus: MenuGroup[] = [
     ],
   },
   { path: '/federated', title: '联邦任务中心', icon: 'Cpu' },
+  {
+    path: '/project',
+    title: '科研项目中心',
+    icon: 'Notebook',
+    children: [
+      { path: '/project', title: '我的科研项目', icon: 'Collection' },
+      { path: '/project/create', title: '项目创建', icon: 'Plus' },
+    ],
+  },
   { path: '/results', title: '结果中心', icon: 'DataAnalysis' },
 ]
 
