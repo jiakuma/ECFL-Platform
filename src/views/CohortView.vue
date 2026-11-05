@@ -1,9 +1,27 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, CopyDocument, Delete, Check, RefreshLeft, Close, ArrowDown } from '@element-plus/icons-vue'
-import { useCohortStore, emptyCohort, type Cohort } from '@/store/cohort'
+import {
+  Plus,
+  CopyDocument,
+  Delete,
+  Check,
+  RefreshLeft,
+  Close,
+  MoreFilled,
+  Search,
+} from '@element-plus/icons-vue'
+import {
+  useCohortStore,
+  emptyCohort,
+  COHORT_TYPES,
+  COHORT_STATUSES,
+  COHORT_DIRECTIONS,
+  COHORT_STATUS_TYPE,
+  type Cohort,
+} from '@/store/cohort'
 import { useOrgStore } from '@/store/org'
+import { StatusBadge } from '@/components/common'
 import {
   availableFields,
   ENUM_OPS,
@@ -24,24 +42,72 @@ const orgStore = useOrgStore()
 /** 当前机构上下文：机构切换器未选时取第一家作为本机构 */
 const currentOrg = computed(() => orgStore.selected || orgStore.allowedOrgs[0])
 
-/* ---------- 管理 Tab 内的「本机构 / 其他机构」分类 ---------- */
-const manageScope = ref<'self' | 'other'>('self')
+/* ---------- 页签 ---------- */
+const activeTab = ref<'manage' | 'filter'>('manage')
 
-/** 本机构队列：归属当前机构（含本机构对外共享的队列），可编辑 */
-const selfRows = computed(() =>
+/* ---------- 列表：本机构队列 + 他院共享摘要 ---------- */
+const allRows = computed(() =>
   store.list
-    .filter((c) => c.org === currentOrg.value)
-    .map((c) => ({ cohort: c, count: runCohort(c.includes, c.excludes).total })),
+    .filter((c) => c.org === currentOrg.value || !!c.shared)
+    .map((c) => ({
+      cohort: c,
+      count: runCohort(c.includes, c.excludes).total,
+      own: c.org === currentOrg.value,
+    })),
 )
-/** 其他机构共享队列：他院主动共享的只读摘要 */
-const otherRows = computed(() =>
-  store.list.filter((c) => !!c.shared && c.org !== currentOrg.value),
+
+/* ---------- 筛选 ---------- */
+const kw = ref('')
+const orgFilter = ref('')
+const typeFilter = ref('')
+const directionFilter = ref('')
+const statusFilter = ref('')
+
+const orgOptions = computed(() => [...new Set(allRows.value.map((r) => r.cohort.org))])
+
+const rows = computed(() =>
+  allRows.value.filter(({ cohort: c }) => {
+    if (kw.value && !`${c.name}${c.id}`.includes(kw.value)) return false
+    if (orgFilter.value && c.org !== orgFilter.value) return false
+    if (typeFilter.value && c.cohortType !== typeFilter.value) return false
+    if (directionFilter.value && c.direction !== directionFilter.value) return false
+    if (statusFilter.value && c.status !== statusFilter.value) return false
+    return true
+  }),
 )
-/** 其他机构共享队列涉及的来源机构数 */
-const otherOrgCount = computed(() => new Set(otherRows.value.map((c) => c.org)).size)
+
+const hasFilter = computed(
+  () =>
+    !!(kw.value || orgFilter.value || typeFilter.value || directionFilter.value || statusFilter.value),
+)
+
+function resetFilter() {
+  kw.value = ''
+  orgFilter.value = ''
+  typeFilter.value = ''
+  directionFilter.value = ''
+  statusFilter.value = ''
+}
+
+/* ---------- 分页 ---------- */
+const page = ref(1)
+const pageSize = ref(10)
+const paged = computed(() =>
+  rows.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value),
+)
+watch(rows, () => {
+  page.value = 1
+})
+function onSizeChange(v: number) {
+  pageSize.value = v
+  page.value = 1
+}
+
+const num = (n: number) => n.toLocaleString('zh-CN')
+const dateOf = (s: string) => (s ? s.split(' ')[0] : '—')
+const statusType = (c: Cohort) => COHORT_STATUS_TYPE[c.status]
 
 /* ---------- 纳排工作台状态 ---------- */
-const activeTab = ref<'filter' | 'manage'>('filter')
 const activeId = ref('')
 const form = reactive<Cohort>(emptyCohort())
 const baseline = ref('')
@@ -52,6 +118,9 @@ function snapshot(): string {
   return JSON.stringify({
     name: form.name,
     purpose: form.purpose,
+    cohortType: form.cohortType,
+    direction: form.direction,
+    status: form.status,
     includes: form.includes,
     excludes: form.excludes,
   })
@@ -60,8 +129,6 @@ const dirty = computed(() => snapshot() !== baseline.value)
 
 /** 实时纳排结果（规则一变立即重算） */
 const preview = computed(() => runCohort(form.includes, form.excludes))
-
-/** 机构分布条的最大值 */
 
 /** 各条件单独命中数，直接标在条件行上 */
 const hitMap = computed(() => {
@@ -76,6 +143,9 @@ function loadForm(c: Cohort) {
     name: c.name,
     purpose: c.purpose,
     org: c.org,
+    cohortType: c.cohortType,
+    direction: c.direction,
+    status: c.status,
     includes: c.includes.map((x) => ({ ...x })),
     excludes: c.excludes.map((x) => ({ ...x })),
     createdAt: c.createdAt,
@@ -187,11 +257,11 @@ async function removeActive() {
   const c = store.list.find((x) => x.id === activeId.value)
   if (!c) return
   try {
-    await ElMessageBox.confirm(`确定删除队列「${c.name}」吗？删除后不影响已创建的科研数据集。`, '删除确认', {
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-      type: 'warning',
-    })
+    await ElMessageBox.confirm(
+      `确定删除队列「${c.name}」吗？删除后不影响已创建的科研数据集。`,
+      '删除确认',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' },
+    )
   } catch {
     return
   }
@@ -216,14 +286,13 @@ function resetForm() {
   if (c) loadForm(c)
 }
 
-/* ---------- 卡片操作（按队列 id，不依赖当前选中） ---------- */
+/* ---------- 行操作（按队列 id，不依赖当前选中） ---------- */
 /** 复制：生成新队列（保留规则，换名称与编号），跳到筛选页继续编辑 */
 function duplicateById(id: string) {
   const item = store.duplicate(id)
   if (!item) return
   activeId.value = item.id
   loadForm(item)
-  manageScope.value = 'self'
   activeTab.value = 'filter'
   ElMessage.success(`已复制为「${item.name}」`)
 }
@@ -268,19 +337,19 @@ function openView(c: Cohort) {
   viewCohort.value = c
   viewOpen.value = true
 }
-function closeView() {
-  viewOpen.value = false
+
+/** 本机构看详情弹窗，他院共享看摘要弹窗 */
+function viewRow(c: Cohort) {
+  if (c.org === currentOrg.value) openView(c)
+  else openOther(c)
 }
 
-/* 卡片：筛选条件条数（纳入 + 排除） */
-function conditionCount(c: Cohort): number {
-  return (c.includes?.length ?? 0) + (c.excludes?.length ?? 0)
-}
-
-/* 卡片「更多」菜单：复制 / 删除 */
-function onSelfCmd(cmd: string, id: string) {
-  if (cmd === 'dup') duplicateById(id)
-  else if (cmd === 'del') removeById(id)
+/* 行「更多」菜单 */
+function onRowCmd(cmd: string, c: Cohort) {
+  if (cmd === 'edit') selectCohort(c.id)
+  else if (cmd === 'dup') duplicateById(c.id)
+  else if (cmd === 'del') removeById(c.id)
+  else if (cmd === 'apply') applyUse(c)
 }
 
 /** 申请使用：其他机构共享队列的模拟申请交互 */
@@ -336,324 +405,409 @@ if (first) {
 
 <template>
   <div class="cq">
-    <div class="cq__head">
-      <h1 class="cq__title">科研队列</h1>
-    </div>
+    <div class="cq__panel">
+      <!-- 页签 + 新建 -->
+      <div class="lp__bar">
+        <div class="lp__tabs">
+          <button
+            type="button"
+            class="lp__tab"
+            :class="{ 'is-on': activeTab === 'manage' }"
+            @click="activeTab = 'manage'"
+          >
+            队列管理
+          </button>
+          <button
+            type="button"
+            class="lp__tab"
+            :class="{ 'is-on': activeTab === 'filter' }"
+            @click="activeTab = 'filter'"
+          >
+            队列筛选
+          </button>
+        </div>
+        <el-button
+          v-if="activeTab === 'manage'"
+          type="primary"
+          :icon="Plus"
+          class="lp__new"
+          @click="startCreate"
+        >
+          新建队列
+        </el-button>
+      </div>
 
-    <el-tabs v-model="activeTab" class="cq-tabs">
-      <!-- 科研队列管理：本机构 / 其他机构 两个分类 -->
-      <el-tab-pane label="科研队列管理" name="manage">
-        <el-tabs v-model="manageScope" class="cq-scope">
-          <!-- 本机构：已保存队列，可查看 / 编辑 / 复制 / 删除 -->
-          <el-tab-pane label="本机构" name="self">
-            <div class="cq-manage__head">
-              <span class="cq-manage__sub">本机构 · {{ currentOrg }} · 共 {{ selfRows.length }} 个队列</span>
-              <el-button type="primary" size="small" :icon="Plus" @click="startCreate">新建队列</el-button>
-            </div>
+      <!-- 队列管理 -->
+      <template v-if="activeTab === 'manage'">
+        <div class="lp__filter">
+          <el-input
+            v-model="kw"
+            placeholder="搜索队列名称 / 编号"
+            clearable
+            :prefix-icon="Search"
+            class="lp__search"
+          />
+          <el-select v-model="orgFilter" placeholder="归属机构" clearable class="lp__sel">
+            <el-option v-for="o in orgOptions" :key="o" :label="o" :value="o" />
+          </el-select>
+          <el-select v-model="typeFilter" placeholder="队列类型" clearable class="lp__sel">
+            <el-option v-for="t in COHORT_TYPES" :key="t" :label="t" :value="t" />
+          </el-select>
+          <el-select v-model="directionFilter" placeholder="研究方向" clearable class="lp__sel">
+            <el-option v-for="d in COHORT_DIRECTIONS" :key="d" :label="d" :value="d" />
+          </el-select>
+          <el-select v-model="statusFilter" placeholder="状态" clearable class="lp__sel">
+            <el-option v-for="s in COHORT_STATUSES" :key="s" :label="s" :value="s" />
+          </el-select>
+          <el-button v-if="hasFilter" text class="lp__reset" @click="resetFilter">重置</el-button>
+        </div>
 
-            <div v-if="selfRows.length" class="cq-cards">
-              <article
-                v-for="row in selfRows"
-                :key="row.cohort.id"
-                class="qcard"
-                :class="{ 'is-active': row.cohort.id === activeId }"
-                @click="selectCohort(row.cohort.id)"
+        <div class="lp__body">
+        <el-table
+          :data="paged"
+          row-key="cohort.id"
+          :border="false"
+          :empty-text="hasFilter ? '没有符合筛选条件的队列' : '暂无队列'"
+          class="lp__table"
+        >
+          <el-table-column label="队列名称" min-width="210" show-overflow-tooltip>
+            <template #default="{ row }">
+              <button type="button" class="lp__name" @click="viewRow(row.cohort)">
+                {{ row.cohort.name }}
+              </button>
+            </template>
+          </el-table-column>
+
+          <el-table-column prop="cohort.id" label="队列编号" min-width="100" />
+
+          <el-table-column prop="cohort.cohortType" label="队列类型" min-width="104" />
+
+          <el-table-column prop="cohort.direction" label="研究方向" min-width="110" />
+
+          <el-table-column label="患者数" min-width="88" align="right">
+            <template #default="{ row }">{{ num(row.count) }}</template>
+          </el-table-column>
+
+          <el-table-column prop="cohort.org" label="归属机构" min-width="132" show-overflow-tooltip />
+
+          <el-table-column label="创建时间" min-width="116">
+            <template #default="{ row }">{{ dateOf(row.cohort.createdAt) }}</template>
+          </el-table-column>
+
+          <el-table-column label="状态" min-width="96">
+            <template #default="{ row }">
+              <StatusBadge :type="statusType(row.cohort)" :text="row.cohort.status" />
+            </template>
+          </el-table-column>
+
+          <el-table-column label="操作" min-width="104" align="right">
+            <template #default="{ row }">
+            <div class="lp__ops">
+              <button type="button" class="lp__ops-link" @click="viewRow(row.cohort)">查看</button>
+              <el-dropdown
+                trigger="click"
+                placement="bottom-end"
+                @command="(cmd: string) => onRowCmd(cmd, row.cohort)"
               >
-                <header class="qcard__top">
-                  <span class="qcard__tag is-self"><i class="qcard__tagdot" />本机构</span>
-                  <span class="qcard__num">{{ row.count }}<i>例</i></span>
-                </header>
+                <button type="button" class="lp__ops-more" aria-label="更多操作">
+                    <el-icon><MoreFilled /></el-icon>
+                  </button>
+                  <template #dropdown>
+                    <el-dropdown-menu v-if="row.own">
+                      <el-dropdown-item command="edit">编辑规则</el-dropdown-item>
+                      <el-dropdown-item command="dup">复制</el-dropdown-item>
+                      <el-dropdown-item command="del" divided>删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                    <el-dropdown-menu v-else>
+                      <el-dropdown-item command="apply">申请使用</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+        </div>
 
-                <h3 class="qcard__title" :title="row.cohort.name">{{ row.cohort.name }}</h3>
+        <!-- 分页 -->
+        <div class="lp__pager">
+          <el-select :model-value="pageSize" class="lp__size" @change="onSizeChange">
+            <el-option :value="10" label="10 条/页" />
+            <el-option :value="20" label="20 条/页" />
+            <el-option :value="50" label="50 条/页" />
+          </el-select>
+          <el-pagination
+            :current-page="page"
+            :page-size="pageSize"
+            :total="rows.length"
+            layout="prev, pager, next"
+            background
+            small
+            @current-change="page = $event"
+          />
+        </div>
+      </template>
 
-                <div class="qcard__meta">
-                  <span class="qcard__id">{{ row.cohort.id }}</span>
-                  <span class="qcard__org" :title="row.cohort.org">{{ row.cohort.org }}</span>
-                </div>
-
-                <p class="qcard__sub">筛选条件 {{ conditionCount(row.cohort) }} 条</p>
-
-                <div class="qcard__ops" @click.stop>
-                  <button type="button" @click="openView(row.cohort)">查看</button>
-                  <button type="button" @click="selectCohort(row.cohort.id)">编辑</button>
-                  <el-dropdown trigger="click" @command="(cmd: string) => onSelfCmd(cmd, row.cohort.id)">
-                    <button type="button" class="qcard__more">更多<el-icon><ArrowDown /></el-icon></button>
-                    <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item command="dup">复制</el-dropdown-item>
-                        <el-dropdown-item command="del" divided>删除</el-dropdown-item>
-                      </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
-                </div>
-              </article>
-            </div>
-            <p v-else class="cq-empty">本机构暂无已保存的队列</p>
-          </el-tab-pane>
-
-          <!-- 其他机构：他院主动共享的只读摘要 -->
-          <el-tab-pane label="其他机构" name="other">
-            <div class="cq-manage__head">
-              <span class="cq-manage__sub">其他机构共享 · 共 {{ otherRows.length }} 个队列 · 来自 {{ otherOrgCount }} 家医院</span>
-            </div>
-
-            <div v-if="otherRows.length" class="cq-cards">
-              <article v-for="c in otherRows" :key="c.id" class="qcard" @click="openOther(c)">
-                <header class="qcard__top">
-                  <span class="qcard__tag is-shared"><i class="qcard__tagdot" />共享</span>
-                  <span class="qcard__status is-open"><i class="qcard__dot" />可申请</span>
-                </header>
-
-                <h3 class="qcard__title" :title="c.name">{{ c.name }}</h3>
-
-                <div class="qcard__meta">
-                  <span class="qcard__org" :title="c.org">{{ c.org }}</span>
-                </div>
-
-                <p class="qcard__sub" :title="c.dataType">{{ c.dataType || '—' }}</p>
-
-                <div class="qcard__foot" @click.stop>
-                  <span class="qcard__date">更新于 {{ c.updatedAt }}</span>
-                  <el-button type="primary" size="small" @click.stop="applyUse(c)">申请使用</el-button>
-                </div>
-              </article>
-            </div>
-            <p v-else class="cq-empty">暂无其他机构共享的队列</p>
-          </el-tab-pane>
-        </el-tabs>
-      </el-tab-pane>
-
-      <!-- 科研队列筛选：纳排工作台 -->
-      <el-tab-pane label="科研队列筛选" name="filter">
-        <div class="wq">
-          <!-- 标识条 -->
-          <div class="wq__top">
-            <div class="wq__head">
+      <!-- 队列筛选：纳排工作台 -->
+      <div v-else class="wq">
+        <div class="wq__top">
+          <div class="wq__head">
             <div class="wq__id">
               <div class="wq__namewrap">
                 <span class="wq__namesize">{{ form.name || '未命名队列' }}</span>
-                <input v-model="form.name" class="wq__name" placeholder="未命名队列" maxlength="40" />
+                <input
+                  v-model="form.name"
+                  class="wq__name"
+                  placeholder="未命名队列"
+                  maxlength="40"
+                />
               </div>
               <span v-if="dirty" class="wq__dirty">未保存</span>
             </div>
             <div class="wq__ops">
-              <el-button v-if="!isNew" text size="small" :icon="CopyDocument" @click="duplicateActive">复制</el-button>
-              <el-button v-if="!isNew" text size="small" :icon="Delete" @click="removeActive">删除</el-button>
-              <el-button v-if="dirty" text size="small" :icon="RefreshLeft" @click="resetForm">重置</el-button>
+              <el-button v-if="!isNew" text size="small" :icon="CopyDocument" @click="duplicateActive">
+                复制
+              </el-button>
+              <el-button v-if="!isNew" text size="small" :icon="Delete" @click="removeActive">
+                删除
+              </el-button>
+              <el-button v-if="dirty" text size="small" :icon="RefreshLeft" @click="resetForm">
+                重置
+              </el-button>
               <el-button type="primary" size="small" :icon="Check" @click="save">保存</el-button>
             </div>
           </div>
+
+          <div class="wq__attrs">
+            <el-select v-model="form.cohortType" size="small" class="wq__attr">
+              <el-option v-for="t in COHORT_TYPES" :key="t" :label="t" :value="t" />
+            </el-select>
+            <el-select v-model="form.direction" size="small" class="wq__attr">
+              <el-option v-for="d in COHORT_DIRECTIONS" :key="d" :label="d" :value="d" />
+            </el-select>
+            <el-select v-model="form.status" size="small" class="wq__attr">
+              <el-option v-for="s in COHORT_STATUSES" :key="s" :label="s" :value="s" />
+            </el-select>
           </div>
-
-          <div class="wq__body">
-            <!-- 纳排规则 -->
-            <div class="rules">
-              <section class="rgroup">
-                <div class="rgroup__head">
-                  <i class="rgroup__dot is-in"></i>
-                  <span class="rgroup__name">纳入条件</span>
-                  <button type="button" class="rgroup__add" @click="addCondition('includes')">+ 添加条件</button>
-                </div>
-                <div class="rgroup__rows">
-                  <p v-if="!form.includes.length" class="rgroup__empty">尚未设置纳入条件</p>
-                  <div v-for="(c, i) in form.includes" :key="c.id" class="crow">
-                    <button
-                      v-if="i > 0"
-                      type="button"
-                      class="crow__logic"
-                      :title="c.logic === 'AND' ? '与上一条同时满足，点击切换为或' : '与上一条满足其一，点击切换为且'"
-                      @click="toggleLogic(c)"
-                    >{{ c.logic === 'AND' ? '且' : '或' }}</button>
-                    <i v-else class="crow__mark"></i>
-
-                    <el-select v-model="c.field" size="small" placeholder="选择字段" @change="onFieldChange(c)">
-                      <el-option-group v-for="g in ['基线', '诊断', '检验', '治疗', '随访']" :key="g" :label="g">
-                        <el-option
-                          v-for="f in availableFields.filter((x) => x.group === g)"
-                          :key="f.key"
-                          :label="fieldLabel(f.key)"
-                          :value="f.key"
-                        />
-                      </el-option-group>
-                    </el-select>
-
-                    <el-select v-model="c.op" size="small" @change="onOpChange(c)">
-                      <el-option v-for="o in opOptions(c)" :key="o.value" :label="o.label" :value="o.value" />
-                    </el-select>
-
-                    <div class="crow__val">
-                      <template v-if="fieldDef(c.field)?.kind === 'enum'">
-                        <el-select
-                          v-if="isMultiOp(c)"
-                          v-model="c.value"
-                          size="small"
-                          multiple
-                          collapse-tags
-                          collapse-tags-tooltip
-                          placeholder="选择取值"
-                        >
-                          <el-option v-for="o in fieldOptions(c.field)" :key="o" :label="o" :value="o" />
-                        </el-select>
-                        <el-input v-else-if="c.op === 'contains'" v-model="c.value" size="small" placeholder="关键字" />
-                        <el-select v-else v-model="c.value" size="small" placeholder="选择取值">
-                          <el-option v-for="o in fieldOptions(c.field)" :key="o" :label="o" :value="o" />
-                        </el-select>
-                      </template>
-                      <template v-else-if="isBetween(c)">
-                        <el-input-number
-                          :model-value="rangeValue(c, 0)"
-                          size="small"
-                          controls-position="right"
-                          :min="fieldRange(c.field)?.min"
-                          :max="fieldRange(c.field)?.max"
-                          @update:model-value="(v: number) => setRangeValue(c, 0, v)"
-                        />
-                        <span class="crow__tilde">~</span>
-                        <el-input-number
-                          :model-value="rangeValue(c, 1)"
-                          size="small"
-                          controls-position="right"
-                          :min="fieldRange(c.field)?.min"
-                          :max="fieldRange(c.field)?.max"
-                          @update:model-value="(v: number) => setRangeValue(c, 1, v)"
-                        />
-                      </template>
-                      <template v-else>
-                        <el-input-number
-                          v-model="c.value"
-                          size="small"
-                          controls-position="right"
-                          :min="fieldRange(c.field)?.min"
-                          :max="fieldRange(c.field)?.max"
-                        />
-                        <span v-if="fieldDef(c.field)?.unit" class="crow__unit">{{ fieldDef(c.field)?.unit }}</span>
-                      </template>
-                    </div>
-
-                    <span class="crow__hit" title="该条件单独命中的人数">{{ hitMap[c.id] ?? 0 }} 例</span>
-
-                    <button type="button" class="crow__del" title="删除条件" @click="removeCondition('includes', c.id)">
-                      <el-icon><Close /></el-icon>
-                    </button>
-                  </div>
-                </div>
-              </section>
-
-              <section class="rgroup">
-                <div class="rgroup__head">
-                  <i class="rgroup__dot is-ex"></i>
-                  <span class="rgroup__name">排除条件</span>
-                  <button type="button" class="rgroup__add" @click="addCondition('excludes')">+ 添加条件</button>
-                </div>
-                <div class="rgroup__rows">
-                  <p v-if="!form.excludes.length" class="rgroup__empty">未设置排除条件</p>
-                  <div v-for="(c, i) in form.excludes" :key="c.id" class="crow">
-                    <button
-                      v-if="i > 0"
-                      type="button"
-                      class="crow__logic"
-                      :title="c.logic === 'AND' ? '与上一条同时满足，点击切换为或' : '与上一条满足其一，点击切换为且'"
-                      @click="toggleLogic(c)"
-                    >{{ c.logic === 'AND' ? '且' : '或' }}</button>
-                    <i v-else class="crow__mark"></i>
-
-                    <el-select v-model="c.field" size="small" placeholder="选择字段" @change="onFieldChange(c)">
-                      <el-option-group v-for="g in ['基线', '诊断', '检验', '治疗', '随访']" :key="g" :label="g">
-                        <el-option
-                          v-for="f in availableFields.filter((x) => x.group === g)"
-                          :key="f.key"
-                          :label="fieldLabel(f.key)"
-                          :value="f.key"
-                        />
-                      </el-option-group>
-                    </el-select>
-
-                    <el-select v-model="c.op" size="small" @change="onOpChange(c)">
-                      <el-option v-for="o in opOptions(c)" :key="o.value" :label="o.label" :value="o.value" />
-                    </el-select>
-
-                    <div class="crow__val">
-                      <template v-if="fieldDef(c.field)?.kind === 'enum'">
-                        <el-select
-                          v-if="isMultiOp(c)"
-                          v-model="c.value"
-                          size="small"
-                          multiple
-                          collapse-tags
-                          collapse-tags-tooltip
-                          placeholder="选择取值"
-                        >
-                          <el-option v-for="o in fieldOptions(c.field)" :key="o" :label="o" :value="o" />
-                        </el-select>
-                        <el-input v-else-if="c.op === 'contains'" v-model="c.value" size="small" placeholder="关键字" />
-                        <el-select v-else v-model="c.value" size="small" placeholder="选择取值">
-                          <el-option v-for="o in fieldOptions(c.field)" :key="o" :label="o" :value="o" />
-                        </el-select>
-                      </template>
-                      <template v-else-if="isBetween(c)">
-                        <el-input-number
-                          :model-value="rangeValue(c, 0)"
-                          size="small"
-                          controls-position="right"
-                          :min="fieldRange(c.field)?.min"
-                          :max="fieldRange(c.field)?.max"
-                          @update:model-value="(v: number) => setRangeValue(c, 0, v)"
-                        />
-                        <span class="crow__tilde">~</span>
-                        <el-input-number
-                          :model-value="rangeValue(c, 1)"
-                          size="small"
-                          controls-position="right"
-                          :min="fieldRange(c.field)?.min"
-                          :max="fieldRange(c.field)?.max"
-                          @update:model-value="(v: number) => setRangeValue(c, 1, v)"
-                        />
-                      </template>
-                      <template v-else>
-                        <el-input-number
-                          v-model="c.value"
-                          size="small"
-                          controls-position="right"
-                          :min="fieldRange(c.field)?.min"
-                          :max="fieldRange(c.field)?.max"
-                        />
-                        <span v-if="fieldDef(c.field)?.unit" class="crow__unit">{{ fieldDef(c.field)?.unit }}</span>
-                      </template>
-                    </div>
-
-                    <span class="crow__hit" title="该条件单独命中的人数">{{ hitMap[c.id] ?? 0 }} 例</span>
-
-                    <button type="button" class="crow__del" title="删除条件" @click="removeCondition('excludes', c.id)">
-                      <el-icon><Close /></el-icon>
-                    </button>
-                  </div>
-                </div>
-              </section>
-            </div>
-          </div>
-
-          <!-- 患者明细 -->
-          <section class="detail">
-            <div class="detail__head">
-              <span class="detail__title">患者明细</span>
-            </div>
-            <el-table :data="preview.visible" size="small" max-height="260">
-              <el-table-column prop="primaryId" label="患者主索引" width="132" show-overflow-tooltip />
-              <el-table-column prop="gender" label="性别" width="52" align="center" />
-              <el-table-column prop="age" label="年龄" width="52" align="center" />
-              <el-table-column prop="diagnosis" label="诊断" min-width="170" show-overflow-tooltip />
-              <el-table-column prop="histology" label="病理组织学" min-width="150" show-overflow-tooltip />
-              <el-table-column prop="stage" label="AJCC 分期" width="150" show-overflow-tooltip />
-              <el-table-column prop="status" label="随访状态" width="84" />
-              <el-table-column prop="org" label="所属机构" width="110" show-overflow-tooltip />
-              <template #empty>
-                <span class="detail__empty">授权范围内无符合条件的患者</span>
-              </template>
-            </el-table>
-          </section>
         </div>
-      </el-tab-pane>
-    </el-tabs>
+
+        <div class="wq__body">
+          <!-- 纳排规则 -->
+          <div class="rules">
+            <section class="rgroup">
+              <div class="rgroup__head">
+                <i class="rgroup__dot is-in"></i>
+                <span class="rgroup__name">纳入条件</span>
+                <button type="button" class="rgroup__add" @click="addCondition('includes')">
+                  + 添加条件
+                </button>
+              </div>
+              <div class="rgroup__rows">
+                <p v-if="!form.includes.length" class="rgroup__empty">尚未设置纳入条件</p>
+                <div v-for="(c, i) in form.includes" :key="c.id" class="crow">
+                  <button
+                    v-if="i > 0"
+                    type="button"
+                    class="crow__logic"
+                    :title="c.logic === 'AND' ? '与上一条同时满足，点击切换为或' : '与上一条满足其一，点击切换为且'"
+                    @click="toggleLogic(c)"
+                  >
+                    {{ c.logic === 'AND' ? '且' : '或' }}
+                  </button>
+                  <i v-else class="crow__mark"></i>
+
+                  <el-select v-model="c.field" size="small" placeholder="选择字段" @change="onFieldChange(c)">
+                    <el-option-group v-for="g in ['基线', '诊断', '检验', '治疗', '随访']" :key="g" :label="g">
+                      <el-option
+                        v-for="f in availableFields.filter((x) => x.group === g)"
+                        :key="f.key"
+                        :label="fieldLabel(f.key)"
+                        :value="f.key"
+                      />
+                    </el-option-group>
+                  </el-select>
+
+                  <el-select v-model="c.op" size="small" @change="onOpChange(c)">
+                    <el-option v-for="o in opOptions(c)" :key="o.value" :label="o.label" :value="o.value" />
+                  </el-select>
+
+                  <div class="crow__val">
+                    <template v-if="fieldDef(c.field)?.kind === 'enum'">
+                      <el-select
+                        v-if="isMultiOp(c)"
+                        v-model="c.value"
+                        size="small"
+                        multiple
+                        collapse-tags
+                        collapse-tags-tooltip
+                        placeholder="选择取值"
+                      >
+                        <el-option v-for="o in fieldOptions(c.field)" :key="o" :label="o" :value="o" />
+                      </el-select>
+                      <el-input v-else-if="c.op === 'contains'" v-model="c.value" size="small" placeholder="关键字" />
+                      <el-select v-else v-model="c.value" size="small" placeholder="选择取值">
+                        <el-option v-for="o in fieldOptions(c.field)" :key="o" :label="o" :value="o" />
+                      </el-select>
+                    </template>
+                    <template v-else-if="isBetween(c)">
+                      <el-input-number
+                        :model-value="rangeValue(c, 0)"
+                        size="small"
+                        controls-position="right"
+                        :min="fieldRange(c.field)?.min"
+                        :max="fieldRange(c.field)?.max"
+                        @update:model-value="(v: number) => setRangeValue(c, 0, v)"
+                      />
+                      <span class="crow__tilde">~</span>
+                      <el-input-number
+                        :model-value="rangeValue(c, 1)"
+                        size="small"
+                        controls-position="right"
+                        :min="fieldRange(c.field)?.min"
+                        :max="fieldRange(c.field)?.max"
+                        @update:model-value="(v: number) => setRangeValue(c, 1, v)"
+                      />
+                    </template>
+                    <template v-else>
+                      <el-input-number
+                        v-model="c.value"
+                        size="small"
+                        controls-position="right"
+                        :min="fieldRange(c.field)?.min"
+                        :max="fieldRange(c.field)?.max"
+                      />
+                      <span v-if="fieldDef(c.field)?.unit" class="crow__unit">{{ fieldDef(c.field)?.unit }}</span>
+                    </template>
+                  </div>
+
+                  <span class="crow__hit" title="该条件单独命中的人数">{{ hitMap[c.id] ?? 0 }} 例</span>
+
+                  <button type="button" class="crow__del" title="删除条件" @click="removeCondition('includes', c.id)">
+                    <el-icon><Close /></el-icon>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section class="rgroup">
+              <div class="rgroup__head">
+                <i class="rgroup__dot is-ex"></i>
+                <span class="rgroup__name">排除条件</span>
+                <button type="button" class="rgroup__add" @click="addCondition('excludes')">
+                  + 添加条件
+                </button>
+              </div>
+              <div class="rgroup__rows">
+                <p v-if="!form.excludes.length" class="rgroup__empty">未设置排除条件</p>
+                <div v-for="(c, i) in form.excludes" :key="c.id" class="crow">
+                  <button
+                    v-if="i > 0"
+                    type="button"
+                    class="crow__logic"
+                    :title="c.logic === 'AND' ? '与上一条同时满足，点击切换为或' : '与上一条满足其一，点击切换为且'"
+                    @click="toggleLogic(c)"
+                  >
+                    {{ c.logic === 'AND' ? '且' : '或' }}
+                  </button>
+                  <i v-else class="crow__mark"></i>
+
+                  <el-select v-model="c.field" size="small" placeholder="选择字段" @change="onFieldChange(c)">
+                    <el-option-group v-for="g in ['基线', '诊断', '检验', '治疗', '随访']" :key="g" :label="g">
+                      <el-option
+                        v-for="f in availableFields.filter((x) => x.group === g)"
+                        :key="f.key"
+                        :label="fieldLabel(f.key)"
+                        :value="f.key"
+                      />
+                    </el-option-group>
+                  </el-select>
+
+                  <el-select v-model="c.op" size="small" @change="onOpChange(c)">
+                    <el-option v-for="o in opOptions(c)" :key="o.value" :label="o.label" :value="o.value" />
+                  </el-select>
+
+                  <div class="crow__val">
+                    <template v-if="fieldDef(c.field)?.kind === 'enum'">
+                      <el-select
+                        v-if="isMultiOp(c)"
+                        v-model="c.value"
+                        size="small"
+                        multiple
+                        collapse-tags
+                        collapse-tags-tooltip
+                        placeholder="选择取值"
+                      >
+                        <el-option v-for="o in fieldOptions(c.field)" :key="o" :label="o" :value="o" />
+                      </el-select>
+                      <el-input v-else-if="c.op === 'contains'" v-model="c.value" size="small" placeholder="关键字" />
+                      <el-select v-else v-model="c.value" size="small" placeholder="选择取值">
+                        <el-option v-for="o in fieldOptions(c.field)" :key="o" :label="o" :value="o" />
+                      </el-select>
+                    </template>
+                    <template v-else-if="isBetween(c)">
+                      <el-input-number
+                        :model-value="rangeValue(c, 0)"
+                        size="small"
+                        controls-position="right"
+                        :min="fieldRange(c.field)?.min"
+                        :max="fieldRange(c.field)?.max"
+                        @update:model-value="(v: number) => setRangeValue(c, 0, v)"
+                      />
+                      <span class="crow__tilde">~</span>
+                      <el-input-number
+                        :model-value="rangeValue(c, 1)"
+                        size="small"
+                        controls-position="right"
+                        :min="fieldRange(c.field)?.min"
+                        :max="fieldRange(c.field)?.max"
+                        @update:model-value="(v: number) => setRangeValue(c, 1, v)"
+                      />
+                    </template>
+                    <template v-else>
+                      <el-input-number
+                        v-model="c.value"
+                        size="small"
+                        controls-position="right"
+                        :min="fieldRange(c.field)?.min"
+                        :max="fieldRange(c.field)?.max"
+                      />
+                      <span v-if="fieldDef(c.field)?.unit" class="crow__unit">{{ fieldDef(c.field)?.unit }}</span>
+                    </template>
+                  </div>
+
+                  <span class="crow__hit" title="该条件单独命中的人数">{{ hitMap[c.id] ?? 0 }} 例</span>
+
+                  <button type="button" class="crow__del" title="删除条件" @click="removeCondition('excludes', c.id)">
+                    <el-icon><Close /></el-icon>
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- 患者明细 -->
+        <section class="detail">
+          <div class="detail__head">
+            <span class="detail__title">患者明细</span>
+            <span class="detail__count">符合条件 {{ preview.total }} 例</span>
+          </div>
+          <el-table :data="preview.visible" size="small" max-height="260">
+            <el-table-column prop="primaryId" label="患者主索引" width="132" show-overflow-tooltip />
+            <el-table-column prop="gender" label="性别" width="52" align="center" />
+            <el-table-column prop="age" label="年龄" width="52" align="center" />
+            <el-table-column prop="diagnosis" label="诊断" min-width="170" show-overflow-tooltip />
+            <el-table-column prop="histology" label="病理组织学" min-width="150" show-overflow-tooltip />
+            <el-table-column prop="stage" label="AJCC 分期" width="150" show-overflow-tooltip />
+            <el-table-column prop="status" label="随访状态" width="84" />
+            <el-table-column prop="org" label="所属机构" width="110" show-overflow-tooltip />
+            <template #empty>
+              <span class="detail__empty">授权范围内无符合条件的患者</span>
+            </template>
+          </el-table>
+        </section>
+      </div>
+    </div>
 
     <!-- 查看弹窗：只读摘要，不进入筛选页、不重复渲染筛选表单 -->
     <el-dialog
@@ -666,6 +820,8 @@ if (first) {
       <template v-if="viewCohort && viewPreview">
         <div class="cq-view__meta">
           <span class="cq-view__org">{{ viewCohort.org }}</span>
+          <span class="cq-view__chip">{{ viewCohort.cohortType }}</span>
+          <span class="cq-view__chip">{{ viewCohort.direction }}</span>
           <span>符合条件 <b>{{ viewPreview.total }}</b> 例</span>
           <span>创建于 {{ viewCohort.createdAt }}</span>
         </div>
@@ -703,6 +859,8 @@ if (first) {
       <template v-if="otherView">
         <div class="cq-view__meta">
           <span class="cq-view__org">{{ otherView.org }}</span>
+          <span class="cq-view__chip">{{ otherView.cohortType }}</span>
+          <span class="cq-view__chip">{{ otherView.direction }}</span>
           <span>更新于 {{ otherView.updatedAt }}</span>
         </div>
         <p class="cq-view__purpose">{{ otherView.purpose || '—' }}</p>
@@ -724,239 +882,43 @@ if (first) {
 </template>
 
 <style scoped>
-.cq__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-.cq__title {
-  position: relative;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  padding-left: 12px;
-  margin: 0;
-  color: var(--pf-text);
-}
-.cq__title::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 2px;
-  bottom: 2px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--pf-primary);
-}
-
-/* ---------- 队列卡片 ---------- */
-.cq-tabs :deep(.el-tabs__header) { margin-bottom: 14px; }
-.cq-tabs :deep(.el-tabs__content) { padding-top: 2px; }
-
-/* ---------- 管理 Tab 内的「本机构 / 其他机构」子分类 ---------- */
-.cq-scope :deep(.el-tabs__header) { margin-bottom: 14px; }
-.cq-scope :deep(.el-tabs__nav-wrap::after) { display: none; }
-.cq-empty {
-  padding: 40px 0;
-  text-align: center;
-  font-size: 12.5px;
-  color: var(--pf-text-faint);
-}
-
-.cq-manage__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-.cq-manage__sub {
-  font-size: 12.5px;
-  color: var(--pf-text-faint);
-}
-
-.cq-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 14px;
-}
-
-/* ---------- 队列卡片：对齐「多模态资源」卡片视觉 ---------- */
-.qcard {
+/* ---------- 页面容器：白色大卡片，浮在背景图上，底部留出背景带 ---------- */
+.cq {
   display: flex;
   flex-direction: column;
-  background: var(--pf-surface);
-  border: 1px solid var(--pf-border);
-  border-radius: 12px;
-  padding: 14px 16px;
-  cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  height: calc(100% - 56px);
+  min-height: 460px;
+  padding: 14px 22px 12px;
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(26, 92, 80, 0.08);
 }
-.qcard:hover {
-  border-color: var(--pf-border-strong);
-  box-shadow: var(--pf-shadow-sm);
-  transform: translateY(-2px);
-}
-.qcard.is-active {
-  border-color: var(--pf-primary);
-  box-shadow: inset 0 0 0 1px var(--pf-primary);
-}
-.qcard__top {
+
+/* ---------- 面板 ---------- */
+.cq__panel {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.qcard__tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 999px;
-  border: 1px solid;
-}
-.qcard__tag.is-self {
-  color: #2563eb;
-  border-color: #2563eb;
-  background: #2563eb12;
-}
-.qcard__tag.is-shared {
-  color: #8b5cf6;
-  border-color: #8b5cf6;
-  background: #8b5cf612;
-}
-.qcard__tagdot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-.qcard__status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #2563eb;
-}
-.qcard__status.is-open { color: #10b981; }
-.qcard__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-.qcard__title {
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.4;
-  margin: 0 0 12px;
-  color: var(--pf-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.qcard__meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--pf-text-soft);
-  margin-bottom: 6px;
-}
-.qcard__org {
-  max-width: 60%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.qcard__num {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--pf-text);
-  line-height: 1;
-}
-.qcard__num i {
-  font-style: normal;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--pf-text-faint);
-  margin-left: 2px;
-}
-.qcard__id {
-  font-variant-numeric: tabular-nums;
-  color: var(--pf-text-faint);
-}
-.qcard__sub {
-  margin: 0 0 10px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--pf-text-soft);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.qcard__more {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-}
-.qcard__date {
-  font-size: 12px;
-  color: var(--pf-text-faint);
-}
-.qcard__ops {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px solid var(--pf-border);
-}
-.qcard__ops button {
-  padding: 2px 7px;
-  font-family: inherit;
-  font-size: 12px;
-  color: var(--pf-text-soft);
+  flex-direction: column;
+  padding: 0;
   background: transparent;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: color 0.14s, background 0.14s;
 }
-.qcard__ops button:hover {
-  color: var(--pf-primary);
-  background: var(--pf-bg-soft);
-}
-.qcard__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px solid var(--pf-border);
-}
+
+/* ---------- 页签 + 新建 / 筛选行 / 表格 / 行操作 / 分页 统一定义在 src/styles/list-page.css（与科研队列页一致），本页直接复用 lp-* 类 ---------- */
 
 /* ---------- 工作台 ---------- */
 .wq {
   padding: 0 18px 18px;
-  background: var(--pf-surface);
-  border: 1px solid var(--pf-border);
-  border-radius: var(--pf-radius-sm);
+  background: #fff;
+  border: 1px solid var(--medical-color-border);
+  border-radius: 12px;
   overflow: hidden;
 }
 .wq__top {
   margin: 0 -18px;
-  padding: 11px 18px;
-  background: var(--pf-bg-soft);
-  border-bottom: 1px solid var(--pf-border);
+  padding: 11px 18px 12px;
+  background: var(--medical-color-surface-secondary);
+  border-bottom: 1px solid var(--medical-color-border);
 }
 .wq__head {
   display: flex;
@@ -978,7 +940,9 @@ if (first) {
   max-width: 420px;
   margin-left: -6px;
 }
-.wq__namewrap > * { grid-area: 1 / 1; }
+.wq__namewrap > * {
+  grid-area: 1 / 1;
+}
 .wq__namesize {
   padding: 2px 6px;
   font-size: 17px;
@@ -995,22 +959,30 @@ if (first) {
   font-size: 17px;
   font-weight: 600;
   line-height: 1.4;
-  color: var(--pf-text);
+  color: var(--medical-color-text-primary);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 6px;
   outline: none;
   transition: border-color 0.15s, background 0.15s;
 }
-.wq__name:hover { border-color: var(--pf-border); }
-.wq__name:focus { border-color: var(--pf-primary); background: var(--pf-surface); }
-.wq__name::placeholder { color: var(--pf-text-faint); font-weight: 500; }
+.wq__name:hover {
+  border-color: var(--medical-color-border);
+}
+.wq__name:focus {
+  border-color: var(--medical-color-primary);
+  background: #fff;
+}
+.wq__name::placeholder {
+  color: var(--medical-color-text-tertiary);
+  font-weight: 500;
+}
 .wq__dirty {
   flex: none;
   padding: 1px 8px;
   border-radius: 4px;
   font-size: 11px;
-  color: var(--pf-warning);
+  color: var(--medical-color-warning);
   background: rgba(245, 158, 11, 0.1);
 }
 .wq__ops {
@@ -1018,6 +990,21 @@ if (first) {
   align-items: center;
   gap: 2px;
   flex: none;
+}
+.wq__attrs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.wq__attr {
+  width: 128px;
+}
+.wq__attr :deep(.el-select__wrapper) {
+  min-height: 28px;
+  background: #fff;
+  font-size: 12.5px;
+  box-shadow: 0 0 0 1px var(--medical-color-border) inset;
 }
 
 .wq__body {
@@ -1046,29 +1033,35 @@ if (first) {
   height: 6px;
   border-radius: 50%;
 }
-.rgroup__dot.is-in { background: var(--pf-success); }
-.rgroup__dot.is-ex { background: var(--pf-danger); }
+.rgroup__dot.is-in {
+  background: var(--medical-color-success);
+}
+.rgroup__dot.is-ex {
+  background: var(--medical-color-danger);
+}
 .rgroup__name {
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--pf-text);
+  color: var(--medical-color-text-primary);
 }
 .rgroup__add {
   margin-left: auto;
   padding: 2px 6px;
   font-family: inherit;
   font-size: 12px;
-  color: var(--pf-primary);
+  color: var(--medical-color-primary);
   background: transparent;
   border: none;
   border-radius: 4px;
   cursor: pointer;
 }
-.rgroup__add:hover { background: var(--pf-bg-soft); }
+.rgroup__add:hover {
+  background: rgba(14, 157, 138, 0.09);
+}
 
 .rgroup__rows {
-  background: var(--pf-surface);
-  border: 1px solid var(--pf-border);
+  background: #fff;
+  border: 1px solid var(--medical-color-border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -1077,7 +1070,7 @@ if (first) {
   padding: 16px;
   text-align: center;
   font-size: 12px;
-  color: var(--pf-text-faint);
+  color: var(--medical-color-text-tertiary);
 }
 
 .crow {
@@ -1086,28 +1079,50 @@ if (first) {
   align-items: center;
   gap: 8px;
   padding: 7px 10px;
-  border-top: 1px solid var(--pf-border);
+  border-top: 1px solid var(--medical-color-border);
   transition: background 0.12s;
 }
-.crow > :nth-child(1) { grid-column: 1; }
-.crow > :nth-child(2) { grid-column: 2; }
-.crow > :nth-child(3) { grid-column: 3; }
-.crow > :nth-child(4) { grid-column: 4; }
-.crow > :nth-child(5) { grid-column: 6; }
-.crow > :nth-child(6) { grid-column: 7; }
-.crow:first-child { border-top: none; }
-.crow:hover { background: var(--pf-surface-2); }
+.crow > :nth-child(1) {
+  grid-column: 1;
+}
+.crow > :nth-child(2) {
+  grid-column: 2;
+}
+.crow > :nth-child(3) {
+  grid-column: 3;
+}
+.crow > :nth-child(4) {
+  grid-column: 4;
+}
+.crow > :nth-child(5) {
+  grid-column: 6;
+}
+.crow > :nth-child(6) {
+  grid-column: 7;
+}
+.crow:first-child {
+  border-top: none;
+}
+.crow:hover {
+  background: var(--medical-color-surface-secondary);
+}
 .crow :deep(.el-select),
-.crow :deep(.el-input) { width: 100%; }
-.crow :deep(.el-input-number) { width: 100%; }
+.crow :deep(.el-input) {
+  width: 100%;
+}
+.crow :deep(.el-input-number) {
+  width: 100%;
+}
 .crow :deep(.el-select__wrapper),
-.crow :deep(.el-input__wrapper) { min-height: 30px; }
+.crow :deep(.el-input__wrapper) {
+  min-height: 30px;
+}
 .crow__mark {
   width: 5px;
   height: 5px;
   margin-left: 8px;
   border-radius: 50%;
-  background: var(--pf-border-strong);
+  background: var(--medical-color-border-strong);
 }
 .crow__logic {
   width: 24px;
@@ -1115,33 +1130,38 @@ if (first) {
   padding: 0;
   font-family: inherit;
   font-size: 11.5px;
-  color: var(--pf-text-soft);
-  background: var(--pf-surface);
-  border: 1px solid var(--pf-border);
+  color: var(--medical-color-text-secondary);
+  background: #fff;
+  border: 1px solid var(--medical-color-border);
   border-radius: 4px;
   cursor: pointer;
 }
-.crow__logic:hover { color: var(--pf-primary); border-color: var(--pf-primary); }
+.crow__logic:hover {
+  color: var(--medical-color-primary);
+  border-color: var(--medical-color-primary);
+}
 .crow__val {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
 }
-.crow__val :deep(.el-input-number) { min-width: 0; }
+.crow__val :deep(.el-input-number) {
+  min-width: 0;
+}
 .crow__tilde {
   flex: none;
   font-size: 12px;
-  color: var(--pf-text-faint);
+  color: var(--medical-color-text-tertiary);
 }
 .crow__unit {
   flex: none;
   font-size: 11.5px;
-  color: var(--pf-text-faint);
+  color: var(--medical-color-text-tertiary);
 }
 .crow__hit {
   font-size: 11px;
-  color: var(--pf-text-faint);
+  color: var(--medical-color-text-tertiary);
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -1154,7 +1174,7 @@ if (first) {
   height: 20px;
   padding: 0;
   font-size: 12px;
-  color: var(--pf-text-faint);
+  color: var(--medical-color-text-tertiary);
   background: transparent;
   border: none;
   border-radius: 4px;
@@ -1162,8 +1182,13 @@ if (first) {
   opacity: 0;
   transition: opacity 0.12s, color 0.12s;
 }
-.crow:hover .crow__del { opacity: 1; }
-.crow__del:hover { color: var(--pf-danger); background: rgba(239, 68, 68, 0.08); }
+.crow:hover .crow__del {
+  opacity: 1;
+}
+.crow__del:hover {
+  color: var(--medical-color-danger);
+  background: rgba(239, 68, 68, 0.08);
+}
 
 /* ---------- 患者明细 ---------- */
 .detail {
@@ -1178,66 +1203,88 @@ if (first) {
 .detail__title {
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--pf-text);
+  color: var(--medical-color-text-primary);
+}
+.detail__count {
+  font-size: 12px;
+  color: var(--medical-color-text-tertiary);
 }
 .detail__empty {
   font-size: 12px;
-  color: var(--pf-text-faint);
+  color: var(--medical-color-text-tertiary);
 }
-.detail :deep(.el-table__inner-wrapper::before) { display: none; }
+.detail :deep(.el-table__inner-wrapper::before) {
+  display: none;
+}
 .detail :deep(.el-table th.el-table__cell) {
   height: 32px;
   padding: 0;
   font-size: 11.5px;
   font-weight: 500;
-  color: var(--pf-text-soft);
-  background: var(--pf-bg-soft);
+  color: var(--medical-color-text-secondary);
+  background: var(--medical-color-surface-secondary);
 }
 .detail :deep(.el-table td.el-table__cell) {
   padding: 6px 0;
   font-size: 12px;
 }
-.detail :deep(.el-table .cell) { line-height: 1.5; }
+.detail :deep(.el-table .cell) {
+  line-height: 1.5;
+}
 
 /* ---------- 查看弹窗（只读） ---------- */
-.cq-view :deep(.el-dialog__body) { padding-top: 8px; }
+.cq-view :deep(.el-dialog__body) {
+  padding-top: 8px;
+}
 .cq-view__meta {
   display: flex;
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
   font-size: 12px;
-  color: var(--pf-text-soft);
+  color: var(--medical-color-text-secondary);
 }
-.cq-view__meta b { color: var(--pf-primary); font-size: 14px; }
+.cq-view__meta b {
+  color: var(--medical-color-primary);
+  font-size: 14px;
+}
 .cq-view__org {
   padding: 1px 8px;
   font-size: 11px;
-  color: var(--pf-primary);
-  background: rgba(37, 99, 235, 0.08);
+  color: var(--medical-color-primary);
+  background: rgba(14, 157, 138, 0.10);
+  border-radius: 4px;
+}
+.cq-view__chip {
+  padding: 1px 8px;
+  font-size: 11px;
+  color: var(--medical-color-text-secondary);
+  background: var(--medical-color-surface-secondary);
   border-radius: 4px;
 }
 .cq-view__purpose {
   margin: 8px 0 4px;
   font-size: 12.5px;
   line-height: 1.5;
-  color: var(--pf-text-soft);
+  color: var(--medical-color-text-secondary);
 }
-.cq-view__block { margin-top: 12px; }
+.cq-view__block {
+  margin-top: 12px;
+}
 .cq-view__label {
   margin-bottom: 6px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--pf-text);
+  color: var(--medical-color-text-primary);
 }
 .cq-view__summary {
   margin: 0;
   padding: 10px 12px;
   font-size: 12px;
   line-height: 1.6;
-  color: var(--pf-text-soft);
-  background: var(--pf-surface-2);
-  border: 1px solid var(--pf-border);
+  color: var(--medical-color-text-secondary);
+  background: var(--medical-color-surface-secondary);
+  border: 1px solid var(--medical-color-border);
   border-radius: 6px;
 }
 .cq-view .detail :deep(.el-table th.el-table__cell) {
@@ -1245,11 +1292,26 @@ if (first) {
   padding: 0;
   font-size: 11.5px;
   font-weight: 500;
-  color: var(--pf-text-soft);
-  background: var(--pf-bg-soft);
+  color: var(--medical-color-text-secondary);
+  background: var(--medical-color-surface-secondary);
 }
 .cq-view .detail :deep(.el-table td.el-table__cell) {
   padding: 6px 0;
   font-size: 12px;
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 1024px) {
+  .cq__search {
+    width: 200px;
+  }
+}
+@media (max-width: 720px) {
+  .cq__panel {
+    padding: 14px 12px 8px;
+  }
+  .cq__search {
+    width: calc(50% - 4px);
+  }
 }
 </style>

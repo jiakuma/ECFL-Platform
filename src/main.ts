@@ -7,6 +7,8 @@ import App from './App.vue'
 import router from './router'
 import { vReveal } from './directives/reveal'
 import './styles/global.css'
+import './styles/design-tokens.css'
+import './styles/list-page.css'
 
 const app = createApp(App)
 

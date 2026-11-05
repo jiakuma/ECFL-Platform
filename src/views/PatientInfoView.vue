@@ -10,6 +10,7 @@ import {
   maskAddress,
   type DataLevel,
 } from '@/mock/patients'
+import { SectionCard } from '@/components/common'
 
 const route = useRoute()
 const patient = computed(() => resolvePatientDetail(route.params.id as string))
@@ -165,12 +166,11 @@ const groups = computed<InfoGroup[]>(() => {
     </section>
 
     <div class="pi__main">
-      <section
+      <SectionCard
         v-for="g in groups"
         :key="g.key"
-        class="pi__group"
+        :title="g.title"
       >
-        <h3 class="pi__h">{{ g.title }}</h3>
         <div class="pi__grid">
           <div
             v-for="(it, i) in g.items"
@@ -190,7 +190,7 @@ const groups = computed<InfoGroup[]>(() => {
             </div>
           </div>
         </div>
-      </section>
+      </SectionCard>
     </div>
   </div>
 </template>
@@ -264,23 +264,6 @@ const groups = computed<InfoGroup[]>(() => {
 }
 .pi__main {
   margin-top: 18px;
-}
-.pi__group {
-  background: #fff;
-  border: 1px solid var(--pf-border);
-  border-radius: 14px;
-  padding: 18px 20px;
-  margin-bottom: 16px;
-}
-.pi__group:last-child {
-  margin-bottom: 0;
-}
-.pi__h {
-  font-size: 15px;
-  font-weight: 700;
-  margin: 0 0 14px;
-  padding-left: 10px;
-  border-left: 3px solid #2563eb;
 }
 .pi__grid {
   display: grid;

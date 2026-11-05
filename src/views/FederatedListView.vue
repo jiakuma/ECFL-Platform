@@ -1,9 +1,21 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus } from '@element-plus/icons-vue'
-import { useFederatedStore, STATUS_COLOR, TASK_STATUS_OPTIONS, type FederatedTask, type TaskStatus } from '@/store/federated'
+import { Plus, Search } from '@element-plus/icons-vue'
+import { useFederatedStore, TASK_STATUS_OPTIONS, type FederatedTask, type TaskStatus } from '@/store/federated'
 import { useOrgStore } from '@/store/org'
+import { StatusBadge, ListView } from '@/components/common'
+
+/** 联邦任务状态 → 语义色（统一，不再使用各页面独立的状态色映射） */
+const taskStatusType: Record<TaskStatus, 'pending' | 'danger' | 'processing' | 'success' | 'disabled'> = {
+  待审批: 'pending',
+  审批未通过: 'danger',
+  待确认: 'processing',
+  待执行: 'processing',
+  训练中: 'processing',
+  已完成: 'success',
+  失败: 'disabled',
+}
 
 const router = useRouter()
 const store = useFederatedStore()
@@ -26,6 +38,20 @@ const list = computed(() =>
 
 const total = computed(() => involved.value.length)
 const leadCount = computed(() => involved.value.filter((t) => t.leaderOrg === currentOrg.value).length)
+
+/* ---------- 分页 ---------- */
+const page = ref(1)
+const pageSize = ref(10)
+const paged = computed(() =>
+  list.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value),
+)
+watch([list], () => {
+  page.value = 1
+})
+function onSizeChange(v: number) {
+  pageSize.value = v
+  page.value = 1
+}
 
 function isLeader(leaderOrg: string) {
   return leaderOrg === currentOrg.value
@@ -55,27 +81,38 @@ function reset() {
 </script>
 
 <template>
-  <div class="fl">
-    <div class="fl__head">
-      <h1 class="fl__title">联邦任务中心</h1>
-      <span class="fl__sub">
-        当前机构：{{ currentOrg }} · 我牵头 {{ leadCount }} 个 / 我参与 {{ total - leadCount }} 个
-      </span>
-      <el-button type="primary" :icon="Plus" size="small" class="fl__new" @click="goCreate">新建任务</el-button>
-    </div>
-
-    <div class="fl__f">
-      <el-input v-model="keyword" placeholder="搜索任务名称" clearable size="small" style="width: 200px" />
-      <el-select v-model="statusFilter" placeholder="全部状态" clearable size="small" style="width: 140px">
+  <ListView
+    new-label="新建任务"
+    :page="page"
+    :page-size="pageSize"
+    :total="list.length"
+    @new="goCreate"
+    @update:page="page = $event"
+    @update:page-size="onSizeChange"
+  >
+    <template #filter>
+      <el-input
+        v-model="keyword"
+        placeholder="搜索任务名称"
+        clearable
+        :prefix-icon="Search"
+        class="lp__search"
+      />
+      <el-select v-model="statusFilter" placeholder="全部状态" clearable class="lp__sel">
         <el-option v-for="s in TASK_STATUS_OPTIONS" :key="s" :label="s" :value="s" />
       </el-select>
-      <el-button size="small" @click="reset">重置</el-button>
-    </div>
+      <button v-if="keyword || statusFilter" type="button" class="lp__reset" @click="reset">重置</button>
+    </template>
 
-    <el-table :data="list" class="fl__table" row-key="id" empty-text="本机构暂无联邦任务">
+    <el-table
+      :data="paged"
+      row-key="id"
+      class="lp__table"
+      empty-text="本机构暂无联邦任务"
+    >
       <el-table-column label="任务名称" min-width="200">
         <template #default="{ row }">
-          <a class="fl__name" @click="goDetail(row.id)">{{ row.name }}</a>
+          <button type="button" class="lp__name" @click="goDetail(row.id)">{{ row.name }}</button>
         </template>
       </el-table-column>
       <el-table-column prop="id" label="任务编号" width="140" />
@@ -88,106 +125,53 @@ function reset() {
       </el-table-column>
       <el-table-column label="我的角色" width="100">
         <template #default="{ row }">
-          <span class="role" :class="isLeader(row.leaderOrg) ? 'role--lead' : 'role--join'">
+          <span class="fl__role" :class="isLeader(row.leaderOrg) ? 'fl__role--lead' : 'fl__role--join'">
             {{ isLeader(row.leaderOrg) ? '牵头' : '参与' }}
           </span>
         </template>
       </el-table-column>
       <el-table-column label="当前状态" width="110">
         <template #default="{ row }">
-          <span class="tag" :style="{ color: STATUS_COLOR[row.status as TaskStatus], background: STATUS_COLOR[row.status as TaskStatus] + '14' }">
-            {{ row.status }}
-          </span>
+          <StatusBadge :type="taskStatusType[row.status as TaskStatus]" :text="row.status" />
         </template>
       </el-table-column>
       <el-table-column label="我的待办" width="140">
         <template #default="{ row }">
-          <a v-if="todoOf(row)" class="fl__todo" :style="{ color: todoOf(row)!.color }" @click="goDetail(row.id)">
+          <button
+            v-if="todoOf(row)"
+            type="button"
+            class="fl__todo"
+            :style="{ color: todoOf(row)!.color }"
+            @click="goDetail(row.id)"
+          >
             {{ todoOf(row)!.label }}
-          </a>
+          </button>
           <span v-else class="fl__none">—</span>
         </template>
       </el-table-column>
       <el-table-column prop="updatedAt" label="更新时间" width="160" />
       <el-table-column label="操作" width="90" fixed="right">
         <template #default="{ row }">
-          <el-button text size="small" type="primary" @click="goDetail(row.id)">查看</el-button>
+          <div class="lp__ops">
+            <button type="button" class="lp__ops-link" @click="goDetail(row.id)">查看</button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
-  </div>
+  </ListView>
 </template>
 
 <style scoped>
-.fl {
-  padding: 4px 2px;
-}
-.fl__head {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-.fl__title {
-  position: relative;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  padding-left: 12px;
-  margin: 0;
-  color: var(--pf-text);
-}
-.fl__title::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 2px;
-  bottom: 2px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--pf-primary);
-}
-.fl__sub {
-  font-size: 12.5px;
-  color: var(--pf-text-faint);
-}
-.fl__new {
-  margin-left: auto;
-}
-.fl__f {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-.fl__table {
-  background: var(--pf-surface);
-  border: 1px solid var(--pf-border);
-  border-radius: 12px;
-  overflow: hidden;
-}
-.fl__name {
-  color: var(--pf-primary);
-  cursor: pointer;
-}
-.fl__name:hover {
-  text-decoration: underline;
-}
+/* ---------- 仅保留本页特有的状态/角色样式，其余统一走 ListView + list-page.css ---------- */
 .fl__org {
   font-size: 12.5px;
-  color: var(--pf-text-soft);
+  color: var(--medical-color-text-secondary);
 }
 .fl__org i {
-  color: var(--pf-text-faint);
+  color: var(--medical-color-text-tertiary);
   font-style: normal;
 }
-.tag {
-  display: inline-block;
-  padding: 1px 9px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 999px;
-}
-.role {
+.fl__role {
   display: inline-block;
   padding: 1px 8px;
   font-size: 12px;
@@ -195,25 +179,27 @@ function reset() {
   border-radius: 4px;
   border: 1px solid transparent;
 }
-.role--lead {
-  color: var(--pf-primary);
-  border-color: color-mix(in srgb, var(--pf-primary) 32%, transparent);
-  background: color-mix(in srgb, var(--pf-primary) 8%, transparent);
+.fl__role--lead {
+  color: var(--medical-color-primary);
+  border-color: color-mix(in srgb, var(--medical-color-primary) 32%, transparent);
+  background: color-mix(in srgb, var(--medical-color-primary) 8%, transparent);
 }
-.role--join {
-  color: var(--pf-text-soft);
-  border-color: var(--pf-border-strong);
-  background: var(--pf-surface-2);
+.fl__role--join {
+  color: var(--medical-color-text-secondary);
+  border-color: var(--medical-color-border-strong);
+  background: var(--medical-color-surface-secondary);
 }
 .fl__todo {
   font-size: 12.5px;
   font-weight: 600;
+  background: transparent;
+  border: none;
   cursor: pointer;
 }
 .fl__todo:hover {
   text-decoration: underline;
 }
 .fl__none {
-  color: var(--pf-text-faint);
+  color: var(--medical-color-text-tertiary);
 }
 </style>

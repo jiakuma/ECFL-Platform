@@ -110,6 +110,8 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/CohortView.vue'),
     meta: {
       title: '科研队列',
+      // 页面自带整幅背景图，内容区不留外边距
+      bleed: true,
       breadcrumb: [
         { title: '专病数据中心', to: '/dataset/patients' },
         { title: '科研队列' },
@@ -122,6 +124,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/DatasetListView.vue'),
     meta: {
       title: '科研数据集',
+      bleed: true,
       breadcrumb: [
         { title: '专病数据中心', to: '/dataset/patients' },
         { title: '科研数据集' },

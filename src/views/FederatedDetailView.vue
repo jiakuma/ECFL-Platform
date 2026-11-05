@@ -6,11 +6,11 @@ import AppIcon from '@/components/AppIcon.vue'
 import TrainingManage from '@/components/training/TrainingManage.vue'
 import {
   useFederatedStore,
-  STATUS_COLOR,
   matchOrg,
   type ApprovalState,
   type LocalTrainConfig,
 } from '@/store/federated'
+import { StatusBadge } from '@/components/common'
 import { useOrgStore } from '@/store/org'
 import { useDatasetStore, type Dataset } from '@/store/dataset'
 import { nodesOfOrg } from '@/mock/computeNodes'
@@ -37,14 +37,30 @@ const myPart = computed(() => task.value?.participants.find((p) => p.org === cur
 const tab = ref('overview')
 
 const approvalLabel: Record<ApprovalState, string> = { pending: '待审批', approved: '已通过', rejected: '未通过' }
-const approvalColor: Record<ApprovalState, string> = { pending: '#f59e0b', approved: '#10b981', rejected: '#f43f5e' }
-const trainColor: Record<string, string> = {
-  未开始: '#64748b',
-  准备中: '#f59e0b',
-  就绪: '#0ea5e9',
-  训练中: '#8b5cf6',
-  完成: '#10b981',
-  失败: '#f43f5e',
+/** 审批状态 → 语义色（统一） */
+const approvalType: Record<ApprovalState, 'pending' | 'success' | 'danger'> = {
+  pending: 'pending',
+  approved: 'success',
+  rejected: 'danger',
+}
+/** 联邦任务状态 → 语义色（统一，不再使用各页面独立的紫色/青色状态色映射） */
+const taskStatusType: Record<string, 'pending' | 'danger' | 'processing' | 'success' | 'disabled'> = {
+  待审批: 'pending',
+  审批未通过: 'danger',
+  待确认: 'processing',
+  待执行: 'processing',
+  训练中: 'processing',
+  已完成: 'success',
+  失败: 'disabled',
+}
+/** 本机构训练状态 → 语义色（统一） */
+const trainStatusType: Record<string, 'disabled' | 'pending' | 'processing' | 'success' | 'danger'> = {
+  未开始: 'disabled',
+  准备中: 'pending',
+  就绪: 'processing',
+  训练中: 'processing',
+  完成: 'success',
+  失败: 'danger',
 }
 
 /* ---------------- 参与方统计 ---------------- */
@@ -60,9 +76,9 @@ const approvalPct = computed(() => (totalOrgs.value ? Math.round((approvedCount.
 
 const approvalSegments = computed(() => {
   const base = [
-    { key: 'approved', label: '已通过', count: approvedCount.value, color: '#10b981' },
-    { key: 'pending', label: '待审批', count: pendingCount.value, color: '#f59e0b' },
-    { key: 'rejected', label: '未通过', count: rejectedCount.value, color: '#f43f5e' },
+    { key: 'approved', label: '已通过', count: approvedCount.value, color: 'var(--medical-color-success)' },
+    { key: 'pending', label: '待审批', count: pendingCount.value, color: 'var(--medical-color-warning)' },
+    { key: 'rejected', label: '未通过', count: rejectedCount.value, color: 'var(--medical-color-danger)' },
   ]
   const total = totalOrgs.value || 1
   return base.map((s) => ({ ...s, pct: (s.count / total) * 100 }))
@@ -208,12 +224,6 @@ const tabs = computed(() => {
   return list
 })
 
-const statusStyle = computed(() => {
-  const s = task.value?.status
-  const c = s ? STATUS_COLOR[s] : '#6366f1'
-  return { color: c, background: c + '14', borderColor: c + '38' }
-})
-
 const avatarPalettes: [string, string][] = [
   ['#6366f1', '#8b5cf6'],
   ['#06b6d4', '#22d3ee'],
@@ -241,11 +251,6 @@ function resultStyle(i: number) {
 }
 
 const dataAvailLabel: Record<string, string> = { ok: '可用', partial: '部分可用', none: '不可用' }
-
-/** 状态标签的软底描边样式 */
-function softTag(color: string) {
-  return { color, background: color + '14', borderColor: color + '30' }
-}
 </script>
 
 <template>
@@ -255,7 +260,7 @@ function softTag(color: string) {
       <div class="fd-head__bar">
         <div class="fd-head__id">
           <h1 class="fd-title">{{ task.name }}</h1>
-          <span class="fd-status" :style="statusStyle"><i></i>{{ task.status }}</span>
+          <StatusBadge :type="taskStatusType[task.status]" :text="task.status" dot />
         </div>
         <div class="fd-head__ops">
           <el-button v-if="isLeader && task.status === '待确认'" type="primary" size="small" @click="confirmLaunch">
@@ -335,9 +340,7 @@ function softTag(color: string) {
                 <p class="panel__sub">{{ currentOrg }}</p>
               </div>
             </div>
-            <span class="panel__chip" :style="{ color: trainColor[myPart?.trainStatus || '未开始'], background: trainColor[myPart?.trainStatus || '未开始'] + '12' }">
-              {{ myPart?.trainStatus || '未开始' }}
-            </span>
+            <StatusBadge :type="trainStatusType[myPart?.trainStatus || '未开始']" :text="myPart?.trainStatus || '未开始'" />
           </div>
 
           <!-- 可编辑 -->
@@ -513,9 +516,7 @@ function softTag(color: string) {
                 <b>{{ p.org }}</b>
                 <span v-if="p.org === task.leaderOrg" class="org__role">牵头</span>
               </div>
-              <span class="tag" :style="softTag(approvalColor[p.approval])">
-                {{ approvalLabel[p.approval] }}
-              </span>
+              <StatusBadge :type="approvalType[p.approval]" :text="approvalLabel[p.approval]" />
             </header>
             <div class="org__meta">
               <div class="org__kv"><em>数据可用</em><b>{{ dataAvailLabel[p.dataAvailable || ''] || '待核查' }}</b></div>
@@ -567,35 +568,6 @@ function softTag(color: string) {
   line-height: 1.3;
   margin: 0;
   color: var(--pf-text);
-}
-.fd-status {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px 3px 9px;
-  font-size: 12px;
-  font-weight: 700;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-.fd-status i {
-  position: relative;
-  flex: none;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-.fd-status i::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.16;
-  animation: blink 1.8s ease-in-out infinite;
 }
 .fd-head__ops {
   display: flex;
@@ -827,15 +799,6 @@ function softTag(color: string) {
   color: var(--pf-text-soft);
   font-weight: 500;
 }
-.tag {
-  flex: none;
-  padding: 2px 10px;
-  font-size: 12px;
-  font-weight: 700;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  white-space: nowrap;
-}
 
 /* ---------- 审批概览 ---------- */
 .approve {
@@ -1040,10 +1003,6 @@ function softTag(color: string) {
   flex: none;
   width: 230px;
   margin-top: 0;
-}
-.titem__main .tag {
-  width: 86px;
-  text-align: center;
 }
 .titem__sub {
   display: flex;
@@ -1329,15 +1288,6 @@ function softTag(color: string) {
     transform: translateY(0);
   }
 }
-@keyframes blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
-}
 
 /* ---------- 响应式 ---------- */
 @media (max-width: 860px) {
@@ -1366,9 +1316,6 @@ function softTag(color: string) {
   .titem__main .prog {
     order: 3;
     width: 100%;
-  }
-  .titem__main .tag {
-    margin-left: auto;
   }
   .titem__result {
     margin-left: 0;

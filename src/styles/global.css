@@ -42,7 +42,12 @@ body {
   font-family: 'Inter', 'HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei',
     system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--pf-text);
-  background: var(--pf-bg);
+  /* 全局页面底色：极浅蓝紫渐变，固定于视口，内容区滚动时背景不位移 */
+  background-color: var(--pf-bg);
+  background-image: var(--pf-page-bg);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-size: cover;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   line-height: 1.6;

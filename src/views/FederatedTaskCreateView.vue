@@ -9,6 +9,7 @@ import {
 } from '@/store/federated'
 import { useCohortStore } from '@/store/cohort'
 import { useDatasetStore, type Dataset } from '@/store/dataset'
+import { PageHeader } from '@/components/common'
 import { useOrgStore } from '@/store/org'
 import { orgNames } from '@/mock/organizations'
 import {
@@ -165,12 +166,11 @@ function submit() {
 
 <template>
   <div class="wz">
-    <div class="wz__head">
-      <h1 class="wz__title">新建联邦学习任务</h1>
-      <div class="wz__ops">
+    <PageHeader title="新建联邦学习任务">
+      <template #actions>
         <el-button size="small" @click="router.push('/federated')">取消</el-button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <el-steps :active="step" finish-status="success" align-center class="wz__steps">
       <el-step v-for="s in steps" :key="s" :title="s" />
@@ -350,34 +350,6 @@ function submit() {
 <style scoped>
 .wz {
   padding: 4px 2px;
-}
-.wz__head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-.wz__title {
-  position: relative;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  padding-left: 12px;
-  margin: 0;
-  color: var(--pf-text);
-}
-.wz__title::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 2px;
-  bottom: 2px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--pf-primary);
-}
-.wz__ops {
-  margin-left: auto;
 }
 .wz__steps {
   margin-bottom: 18px;

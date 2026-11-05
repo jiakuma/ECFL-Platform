@@ -472,7 +472,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .lr {
   min-height: 100%;
-  background: var(--pf-bg);
+  background: transparent;
 }
 .lr__bar {
   display: flex;

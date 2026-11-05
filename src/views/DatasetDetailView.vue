@@ -12,6 +12,7 @@ import {
   type FieldCategory,
   type FieldStats,
 } from '@/mock/datasetFields'
+import { PageHeader, StatusBadge } from '@/components/common'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,10 +25,11 @@ const d = computed<Dataset | undefined>(() => store.list.find((x) => x.id === id
 onMounted(() => store.ensureSeed())
 
 const tab = ref('basic')
-const statusColor: Record<Dataset['status'], string> = {
-  可用于训练: '#10b981',
-  待完善: '#f59e0b',
-  不可用: '#f43f5e',
+/** 数据集状态 → 语义色（统一，不再使用各页面独立的状态色映射） */
+const datasetStatusType: Record<Dataset['status'], 'success' | 'pending' | 'danger'> = {
+  可用于训练: 'success',
+  待完善: 'pending',
+  不可用: 'danger',
 }
 
 const checks = computed(() => (d.value ? store.checksOf(d.value) : []))
@@ -112,26 +114,25 @@ async function remove() {
   }
 }
 
-const levelColor: Record<string, string> = { 通过: '#10b981', 警告: '#f59e0b', 失败: '#f43f5e' }
+/** 训练前检查项级别 → 语义色 */
+const checkLevelType: Record<string, 'success' | 'pending' | 'danger'> = {
+  通过: 'success',
+  警告: 'pending',
+  失败: 'danger',
+}
 </script>
 
 <template>
   <div v-if="d" class="dd">
-    <div class="dd__head">
-      <div class="dd__title-wrap">
-        <h1 class="dd__title">{{ d.name }}</h1>
-        <span class="dd__id">{{ d.id }}</span>
-        <span class="dd__status" :style="{ color: statusColor[d.status] }">
-          <i :style="{ background: statusColor[d.status] }" />{{ d.status }}
-        </span>
-      </div>
-      <div class="dd__ops">
+    <PageHeader :title="d.name" :meta="d.id">
+      <template #actions>
+        <StatusBadge :type="datasetStatusType[d.status]" :text="d.status" dot />
         <el-button size="small" :icon="EditPen" @click="goEdit">编辑</el-button>
         <el-button size="small" :icon="CopyDocument" @click="duplicate">复制</el-button>
         <el-button size="small" :icon="Delete" @click="remove">删除</el-button>
         <el-button type="primary" size="small" :icon="Cpu" @click="goTask">创建训练任务</el-button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <div class="dd__meta">
       <span>所属机构：{{ d.org }}</span>
@@ -237,11 +238,11 @@ const levelColor: Record<string, string> = { 通过: '#10b981', 警告: '#f59e0b
 
           <div class="ck__hd">
             训练前检查结果
-            <span class="ck__hd-status" :style="{ color: statusColor[d.status] }">{{ d.status }}</span>
+            <StatusBadge :type="datasetStatusType[d.status]" :text="d.status" />
           </div>
           <div class="ck">
             <div v-for="c in checks" :key="c.name" class="ck__item">
-              <span class="ck__lv" :style="{ background: levelColor[c.level] }">{{ c.level }}</span>
+              <StatusBadge :type="checkLevelType[c.level]" :text="c.level" />
               <div class="ck__txt">
                 <b>{{ c.name }}</b>
                 <p>{{ c.detail }}</p>
@@ -294,63 +295,6 @@ const levelColor: Record<string, string> = { 通过: '#10b981', 警告: '#f59e0b
 </template>
 
 <style scoped>
-.dd__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-.dd__title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.dd__title {
-  position: relative;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  padding-left: 12px;
-  margin: 0;
-  color: var(--pf-text);
-}
-.dd__title::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 2px;
-  bottom: 2px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--pf-primary);
-}
-.dd__id {
-  padding: 2px 9px;
-  font-size: 12px;
-  color: var(--pf-text-soft);
-  background: var(--pf-bg-soft);
-  border-radius: 999px;
-}
-.dd__status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  font-weight: 600;
-}
-.dd__status i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-.dd__ops {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 .dd__meta {
   display: flex;
   gap: 16px;
@@ -501,10 +445,6 @@ const levelColor: Record<string, string> = { 通过: '#10b981', 警告: '#f59e0b
   font-weight: 700;
   color: var(--pf-text);
 }
-.ck__hd-status {
-  font-size: 12px;
-  font-weight: 600;
-}
 .ck {
   display: flex;
   flex-direction: column;
@@ -516,15 +456,6 @@ const levelColor: Record<string, string> = { 通过: '#10b981', 警告: '#f59e0b
   padding: 10px 12px;
   background: var(--pf-bg-soft);
   border-radius: 8px;
-}
-.ck__lv {
-  flex: none;
-  align-self: flex-start;
-  padding: 1px 8px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  border-radius: 4px;
 }
 .ck__txt b {
   font-size: 12.5px;

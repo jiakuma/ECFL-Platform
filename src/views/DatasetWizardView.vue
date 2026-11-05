@@ -17,6 +17,7 @@ import {
 } from '@/store/dataset'
 import { useCohortStore } from '@/store/cohort'
 import { useOrgStore } from '@/store/org'
+import { PageHeader, StatusBadge } from '@/components/common'
 import { cohortSummary, runCohort } from '@/mock/cohortFields'
 import {
   datasetFieldCatalog,
@@ -216,17 +217,25 @@ function cancel() {
   router.push('/dataset/research-datasets')
 }
 
-const levelColor: Record<string, string> = { 通过: '#10b981', 警告: '#f59e0b', 失败: '#f43f5e' }
+/** 训练前检查项级别 → 语义色（统一，不再使用各页面独立的状态色映射） */
+const checkLevelType: Record<string, 'success' | 'pending' | 'danger'> = {
+  通过: 'success',
+  警告: 'pending',
+  失败: 'danger',
+}
+/** 检查汇总 → 语义色 */
+const summaryType = computed<'success' | 'pending' | 'danger'>(() =>
+  failCount.value ? 'danger' : warnCount.value ? 'pending' : 'success',
+)
 </script>
 
 <template>
   <div class="wz">
-    <div class="wz__head">
-      <h1 class="wz__title">{{ isEdit ? '编辑数据集' : '新建数据集' }}</h1>
-      <div class="wz__ops">
+    <PageHeader :title="isEdit ? '编辑数据集' : '新建数据集'">
+      <template #actions>
         <el-button size="small" @click="cancel">取消</el-button>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <el-steps :active="step" finish-status="success" align-center class="wz__steps">
       <el-step title="基本信息" />
@@ -368,15 +377,13 @@ const levelColor: Record<string, string> = { 通过: '#10b981', 警告: '#f59e0b
       <!-- 5 检查并保存 -->
       <section v-else class="wz__panel">
         <div class="ck__sum">
-          <span class="ck__badge" :style="{ color: levelColor[failCount ? '失败' : warnCount ? '警告' : '通过'] }">
-            检查结果：{{ failCount }} 项失败 · {{ warnCount }} 项警告
-          </span>
+          <StatusBadge :type="summaryType" :text="`检查结果：${failCount} 项失败 · ${warnCount} 项警告`" />
           <span class="ck__status">保存后状态：{{ nextStatus }}</span>
         </div>
 
         <div class="ck">
           <div v-for="c in checks" :key="c.name" class="ck__item">
-            <span class="ck__lv" :style="{ background: levelColor[c.level] }">{{ c.level }}</span>
+            <StatusBadge :type="checkLevelType[c.level]" :text="c.level" />
             <div class="ck__txt">
               <b>{{ c.name }}</b>
               <p>{{ c.detail }}</p>
@@ -401,32 +408,6 @@ const levelColor: Record<string, string> = { 通过: '#10b981', 警告: '#f59e0b
 </template>
 
 <style scoped>
-.wz__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-.wz__title {
-  position: relative;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  padding-left: 12px;
-  margin: 0;
-  color: var(--pf-text);
-}
-.wz__title::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 2px;
-  bottom: 2px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--pf-primary);
-}
 .wz__steps {
   padding: 14px 16px;
   margin-bottom: 14px;
@@ -698,10 +679,6 @@ const levelColor: Record<string, string> = { 通过: '#10b981', 警告: '#f59e0b
   gap: 12px;
   margin-bottom: 12px;
 }
-.ck__badge {
-  font-size: 12.5px;
-  font-weight: 700;
-}
 .ck__status {
   font-size: 12.5px;
   color: var(--pf-text-soft);
@@ -713,19 +690,11 @@ const levelColor: Record<string, string> = { 通过: '#10b981', 警告: '#f59e0b
 }
 .ck__item {
   display: flex;
+  align-items: flex-start;
   gap: 10px;
   padding: 10px 12px;
   background: var(--pf-bg-soft);
   border-radius: 8px;
-}
-.ck__lv {
-  flex: none;
-  align-self: flex-start;
-  padding: 1px 8px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  border-radius: 4px;
 }
 .ck__txt b {
   font-size: 12.5px;

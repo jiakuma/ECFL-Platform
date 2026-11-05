@@ -12,12 +12,36 @@ import { orgNames } from '@/mock/organizations'
    队列归属：org 标记所属机构，shared 标记是否为他院共享摘要
    ------------------------------------------------------------ */
 
+/** 队列类型：按研究组织方式区分 */
+export type CohortType = '随访队列' | '观察队列' | '专题队列' | '治疗队列'
+/** 队列状态：准备中（规则未定稿）/ 进行中（入组中）/ 已结组（停止入组）/ 已存档 */
+export type CohortStatus = '准备中' | '进行中' | '已结组' | '已存档'
+
+export const COHORT_TYPES: CohortType[] = ['随访队列', '观察队列', '专题队列', '治疗队列']
+export const COHORT_STATUSES: CohortStatus[] = ['准备中', '进行中', '已结组', '已存档']
+/** 研究方向：与项目、数据集对齐的常用研究主题 */
+export const COHORT_DIRECTIONS = ['预后分析', '生存分析', '标志物研究', '复发风险', '疗效评估']
+
+/** 队列状态 → StatusBadge 语义色 */
+export const COHORT_STATUS_TYPE: Record<CohortStatus, 'pending' | 'processing' | 'info' | 'success'> = {
+  准备中: 'pending',
+  进行中: 'processing',
+  已结组: 'info',
+  已存档: 'success',
+}
+
 export interface Cohort {
   id: string
   name: string
   purpose: string
   /** 所属机构（用于本机构 / 其他机构区分） */
   org: string
+  /** 队列类型 */
+  cohortType: CohortType
+  /** 研究方向 */
+  direction: string
+  /** 队列状态 */
+  status: CohortStatus
   /** 纳入条件（组内 AND / OR） */
   includes: CohortCondition[]
   /** 排除条件（任一满足即排除） */
@@ -42,6 +66,9 @@ export function emptyCohort(): Cohort {
     name: '',
     purpose: '',
     org: SELF_ORG,
+    cohortType: '随访队列',
+    direction: '预后分析',
+    status: '准备中',
     includes: [newCondition('diagnosis')],
     excludes: [],
     createdAt: '',
@@ -68,6 +95,9 @@ function seed(): Cohort[] {
       name: '食管鳞癌随访队列',
       purpose: '筛选病理类型为鳞癌且已进入规律随访的患者，用于术后复发风险因素分析',
       org: SELF_ORG,
+      cohortType: '随访队列',
+      direction: '复发风险',
+      status: '进行中',
       includes: [{ ...newCondition('diagnosis'), op: 'contains', value: '鳞状' }],
       excludes: [{ ...newCondition('followup_status'), op: 'eq', value: '评估中' }],
       createdAt: '2026-09-12 10:24',
@@ -78,6 +108,9 @@ function seed(): Cohort[] {
       name: '老年或手术患者队列',
       purpose: '65 岁以上或已接受手术治疗的患者，演示 OR 逻辑组合',
       org: SELF_ORG,
+      cohortType: '观察队列',
+      direction: '生存分析',
+      status: '准备中',
       includes: [
         { ...newCondition('age'), op: 'gte', value: 65 },
         { ...newCondition('treatment_modality'), op: 'eq', value: '手术', logic: 'OR' },
@@ -91,6 +124,9 @@ function seed(): Cohort[] {
       name: '肿瘤标志物监测队列',
       purpose: '近期鳞状细胞癌抗原高于 1 ng/mL 的患者，用于标志物动态监测研究',
       org: SELF_ORG,
+      cohortType: '专题队列',
+      direction: '标志物研究',
+      status: '已结组',
       includes: [{ ...newCondition('lab:鳞状细胞癌抗原 SCC'), op: 'gt', value: 1 }],
       excludes: [],
       createdAt: '2026-10-08 11:17',
@@ -105,6 +141,9 @@ function seed(): Cohort[] {
       name: '局部晚期食管鳞癌新辅助化疗队列',
       purpose: '纳入 cT3-4aNanyM0 局部晚期食管鳞癌、接受新辅助化疗的患者，用于病理缓解与生存分析',
       org: orgNames[2],
+      cohortType: '治疗队列',
+      direction: '疗效评估',
+      status: '进行中',
       shared: true,
       dataType: '临床基线 · 影像 · 病理',
       shareNote: '仅共享队列定义与汇总级入组人数，患者级明细需经审批后申请使用',
@@ -118,6 +157,9 @@ function seed(): Cohort[] {
       name: '食管癌免疫治疗随访队列',
       purpose: '接受系统治疗并进入随访的食管癌患者，分析治疗反应与生存预后',
       org: orgNames[1],
+      cohortType: '随访队列',
+      direction: '生存分析',
+      status: '已存档',
       shared: true,
       dataType: '临床基线 · 检验 · 随访',
       shareNote: '开放队列摘要，可用于跨中心联合统计的初步可行性评估',
@@ -131,6 +173,9 @@ function seed(): Cohort[] {
       name: '老年营养风险筛查队列',
       purpose: '70 岁以上、营养风险筛查评分偏高且合并基础疾病的患者，用于营养干预研究',
       org: orgNames[2],
+      cohortType: '观察队列',
+      direction: '预后分析',
+      status: '进行中',
       shared: true,
       dataType: '临床基线 · 检验 · 营养评估',
       shareNote: '共享队列摘要与入组标准，申请使用后可在授权范围内查看脱敏明细',

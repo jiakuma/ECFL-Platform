@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import { patientList, type PatientRow } from '@/mock/patients'
+import { PageHeader, FilterBar, StatusBadge } from '@/components/common'
 
 const router = useRouter()
 
@@ -33,9 +34,9 @@ function resetFilter() {
   stageFilter.value = ''
 }
 
-// 状态色：随访中=数据青 / 治疗中=橙 / 已结案=绿 / 失访=灰
-const statusColor: Record<string, string> = {
-  随访中: '#06b6d4', 治疗中: '#f59e0b', 已结案: '#10b981', 失访: '#94a0b8',
+// 随访状态：统一语义色（不再使用页面独立状态色）
+const followupStatusType: Record<string, 'processing' | 'pending' | 'success' | 'disabled'> = {
+  随访中: 'processing', 治疗中: 'pending', 已结案: 'success', 失访: 'disabled',
 }
 
 // 分期按严重程度着色：早期绿 / 中期蓝 / 局部晚期橙 / 晚期红
@@ -55,31 +56,30 @@ function goDetail(p: PatientRow) {
 <template>
   <div class="pm">
     <!-- 页头 -->
-    <div class="pm__head">
-      <h1 class="pm__title">患者主档案</h1>
-      <p class="pm__count">{{ filtered.length }} 例</p>
-    </div>
+    <PageHeader title="患者主档案" :meta="`${filtered.length} 例`" />
 
     <!-- 筛选 -->
-    <div class="pm__bar pf-card">
-      <el-input v-model="keyword" placeholder="搜索主索引号 / 诊断 / 机构" :prefix-icon="Search" clearable class="pm__f-kw" />
-      <el-select v-model="orgFilter" placeholder="归属机构" clearable class="pm__f">
-        <el-option v-for="o in orgOptions" :key="o" :label="o" :value="o" />
-      </el-select>
-      <el-select v-model="stageFilter" placeholder="临床分期" clearable class="pm__f">
-        <el-option v-for="s in stageOptions" :key="s" :label="s" :value="s" />
-      </el-select>
-      <el-button type="primary" plain :icon="Refresh" @click="resetFilter">重置</el-button>
-    </div>
+    <FilterBar>
+      <template #filters>
+        <el-input v-model="keyword" placeholder="搜索主索引号 / 诊断 / 机构" :prefix-icon="Search" clearable class="pm__f-kw" />
+        <el-select v-model="orgFilter" placeholder="归属机构" clearable class="pm__f">
+          <el-option v-for="o in orgOptions" :key="o" :label="o" :value="o" />
+        </el-select>
+        <el-select v-model="stageFilter" placeholder="临床分期" clearable class="pm__f">
+          <el-option v-for="s in stageOptions" :key="s" :label="s" :value="s" />
+        </el-select>
+      </template>
+      <template #actions>
+        <el-button type="primary" plain :icon="Refresh" @click="resetFilter">重置</el-button>
+      </template>
+    </FilterBar>
 
     <!-- 患者卡片流 -->
     <div class="pm__grid">
       <article v-for="p in filtered" :key="p.id" class="pm-card" @click="goDetail(p)">
         <header class="pm-card__top">
           <span class="pm-card__id">{{ p.primaryId }}</span>
-          <span class="pm-card__status" :style="{ color: statusColor[p.status] }">
-            <i class="pm-card__dot" />{{ p.status }}
-          </span>
+          <StatusBadge :type="followupStatusType[p.status]" :text="p.status" dot />
         </header>
 
         <div class="pm-card__dx">
@@ -106,57 +106,11 @@ function goDetail(p: PatientRow) {
 .pm {
   padding: 4px 0;
 }
-.pm__head {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-.pm__title {
-  position: relative;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  padding-left: 16px;
-  margin: 0;
-  color: var(--pf-text);
-}
-.pm__title::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 2px;
-  bottom: 2px;
-  width: 4px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, #22d3ee, #2563eb);
-}
-.pm__count {
-  font-size: 13px;
-  color: var(--pf-text-faint);
-  letter-spacing: 0.02em;
-}
-
-.pm__bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 14px 16px;
-  margin-bottom: 16px;
-}
 .pm__f-kw {
   width: 260px;
 }
 .pm__f {
   width: 170px;
-}
-.pm__bar :deep(.el-input__wrapper),
-.pm__bar :deep(.el-select .el-input__wrapper) {
-  border-radius: 8px;
-  box-shadow: 0 0 0 1px var(--pf-border-strong) inset !important;
-}
-.pm__bar :deep(.el-button) {
-  border-radius: 8px;
 }
 
 .pm__grid {
@@ -198,21 +152,6 @@ function goDetail(p: PatientRow) {
   padding: 3px 9px;
   border-radius: 6px;
 }
-.pm-card__status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.pm-card__dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
 .pm-card__dx {
   margin-top: 14px;
 }

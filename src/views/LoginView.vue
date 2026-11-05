@@ -105,7 +105,8 @@ async function handleLogin() {
   align-items: center;
   justify-content: center;
   gap: 18px;
-  background: var(--pf-bg);
+  background: var(--pf-page-bg);
+  background-color: var(--pf-bg);
   padding: 24px;
 }
 .login__card {
